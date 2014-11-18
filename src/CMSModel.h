@@ -32,6 +32,8 @@ namespace CMS {
         string get(string attr, string _default = "");
         string id();
         string cid();
+        map<string, string> &attributes(){ return _attributes; }
+
 
         // void destroy(bool notify = true);
 
