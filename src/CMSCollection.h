@@ -42,7 +42,7 @@ namespace CMS {
         ModelClass* at(unsigned int idx);
         ModelClass* findByAttr(string attr, string value);
         ModelClass* findById(string _id);
-        ModelClass* byCid(int cid);
+        ModelClass* byCid(string cid);
 
         ModelClass* previous(ModelClass* model);
         ModelClass* next(ModelClass* model);
@@ -122,7 +122,7 @@ namespace CMS {
 
     protected: // methods
 
-        int indexByCid(int cid);
+        int indexByCid(string cid);
         string parseModelJsonValue(Json::Value &value);
 
         void registerSyncCallbacks(Collection<ModelClass> &otherCollection, bool _register = true){
@@ -253,7 +253,7 @@ namespace CMS {
     }
     
     template <class ModelClass>
-    int CMS::Collection<ModelClass>::indexByCid(int cid){
+    int CMS::Collection<ModelClass>::indexByCid(string cid){
         for(int i=0; i<_models.size(); i++){
             if(_models[i]->cid() == cid)
                 return i;
@@ -287,7 +287,7 @@ namespace CMS {
     }
 
     template <class ModelClass>
-    ModelClass* CMS::Collection<ModelClass>::byCid(int _cid){
+    ModelClass* CMS::Collection<ModelClass>::byCid(string _cid){
         int idx = indexByCid(_cid);
         return idx == -1 ? NULL : _models[idx];
     }
