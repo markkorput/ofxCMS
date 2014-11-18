@@ -31,7 +31,7 @@ namespace CMS {
         Model* set(string attr, string value, bool notify = true);
         string get(string attr, string _default = "");
         string id();
-        const int cid();
+        string cid();
 
         // void destroy(bool notify = true);
 
@@ -49,8 +49,7 @@ namespace CMS {
 
         // CID stuff (client-id, local/internal ids,
         // mainly to identify unpersisted models)
-        // TODO: use string-based cids?
-        int _cid;
+        string mCid;
         static int mCidCounter; // to give every model its own
 
     }; // class Model

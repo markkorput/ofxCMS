@@ -16,7 +16,8 @@ using namespace CMS;
 int Model::mCidCounter = 0;
 
 Model::Model(){
-    _cid = mCidCounter;
+    // TODO: use a more globally unique timestamp-based Cid format?
+    mCid = "c"+ofToString(mCidCounter);
     mCidCounter++;
 }
 
@@ -46,15 +47,15 @@ string Model::get(string attr, string _default){
     return (_attributes.find(attr) == _attributes.end()) ? _default : _attributes[attr];
 }
 
-const int Model::cid(){
-    return _cid;
+string Model::cid(){
+    return mCid;
 }
 
 string Model::id(){
     // look for an "id" attribute, if that's not present,
     // look for an "_id" attribute (mongoDB style), if that's not present,
     // grab the cid()
-    return get("id", get("_id", ofToString(cid())));
+    return get("id", get("_id", cid()));
 }
 
 // this was causing SIGABRT exceptions...
