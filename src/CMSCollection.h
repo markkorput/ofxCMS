@@ -38,6 +38,7 @@ namespace CMS {
         void destroyAll();
 
         const vector<ModelClass*> &models();
+        unsigned int count(){ return _models.size(); }
 
         ModelClass* at(unsigned int idx);
         ModelClass* findByAttr(string attr, string value);
