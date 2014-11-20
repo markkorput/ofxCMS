@@ -25,12 +25,14 @@ namespace CMS {
 
     public: // methods
 
-        Collection() : _syncSource(NULL){}
+        const static int NO_LIMIT = -1;
+
+        Collection() : _syncSource(NULL), mLimit(NO_LIMIT){}
         ~Collection();
 
         void initialize(vector< map<string, string> > &_data);
 
-        void add(ModelClass *model, bool notify = true);
+        bool add(ModelClass *model, bool notify = true);
         void remove(ModelClass *model);
         void destroy(ModelClass *model);
         void destroyBy(string key, string value);
@@ -50,6 +52,15 @@ namespace CMS {
 
         void clone(Collection<ModelClass> &source);
         void syncsFrom(Collection<ModelClass> &collection);
+
+        void limit(int amount){
+            // apply limit to current collection
+            while(_models.size() > amount){
+                remove(at(_models.size()-1));
+            }
+            // save limit to be enforced in future additions
+            mLimit = amount;
+        }
 
     public: // parsing methods
 
@@ -153,6 +164,7 @@ namespace CMS {
         Collection<ModelClass>* _syncSource;
         map<string, string> filterValues;
         map< string, vector<string> > filterVectors;
+        int mLimit;
 
     }; // class Collection
 
@@ -185,14 +197,20 @@ namespace CMS {
     }
 
     template <class ModelClass>
-    void CMS::Collection<ModelClass>::add(ModelClass *model, bool notify){
+    bool CMS::Collection<ModelClass>::add(ModelClass *model, bool notify){
         // What the hell are we supposed to do with this??
-        if(model == NULL) return;
+        if(model == NULL) return false;
+
+        // reached our limit, can't add any more
+        if(mLimit != NO_LIMIT && _models.size() >= mLimit){
+            ofLog() << "Collection limit reached, can't add model";
+            return false;
+        }
 
         // apply active filters
         if(!modelPassesActiveFilters(model)){
             ofNotifyEvent(modelRejectedEvent, *model, this);
-            return;
+            return false;
         }
 
         // add to our collection
@@ -204,6 +222,9 @@ namespace CMS {
 
         // let's tell the world
         if(notify) ofNotifyEvent(modelAddedEvent, *model, this);
+
+        // success!
+        return true;
     }
 
     template <class ModelClass>
@@ -381,7 +402,11 @@ namespace CMS {
                 //  not existing model found? Add a new one
                 ModelClass *new_model = new ModelClass();
                 parseModelJson(new_model, ((ofxJSONElement)json[i]).getRawString(false));
-                add(new_model);
+                // if we couldn't add this model to the collection
+                // destroy the model, otherwise it's just hanging out in memory
+                if(!add(new_model)){
+                    delete new_model;
+                }
             }
         }
 
