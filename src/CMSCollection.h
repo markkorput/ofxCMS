@@ -65,6 +65,10 @@ namespace CMS {
             mLimit = amount;
         }
 
+        bool limitReached(){
+            return mLimit != NO_LIMIT && _models.size() >= mLimit;
+        }
+
         bool has(ModelClass* m){ return index(m) != INVALID_INDEX; }
         int index(ModelClass* m){
             for(int i=0; i<_models.size(); i++){
@@ -231,7 +235,7 @@ namespace CMS {
         if(model == NULL) return false;
 
         // reached our limit, can't add any more
-        if(mLimit != NO_LIMIT && _models.size() >= mLimit){
+        if(limitReached()){
             ofLog() << "Collection limit reached, can't add model";
             return false;
         }
@@ -427,9 +431,11 @@ namespace CMS {
             if(existing){
                 // let the Model attribute changed callbacks deal with further parsing
                 parseModelJson(existing, ((ofxJSONElement)json[i]).getRawString(false));
-            } else {
+            // do an early limit check, to avoid unnecessary parsing
+            } else if(!limitReached()){
                 //  not existing model found? Add a new one
                 ModelClass *new_model = new ModelClass();
+
                 parseModelJson(new_model, ((ofxJSONElement)json[i]).getRawString(false));
                 // if we couldn't add this model to the collection
                 // destroy the model, otherwise it's just hanging out in memory
@@ -443,7 +449,6 @@ namespace CMS {
         ofNotifyEvent(collectionInitializedEvent, this);
         return true;
     }
-
 
     // for convenience
     template <class ModelClass>
