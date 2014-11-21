@@ -26,6 +26,7 @@ namespace CMS {
     public: // methods
 
         const static int NO_LIMIT = -1;
+        const static int INVALID_INDEX = -1;
 
         Collection() : _syncSource(NULL), mLimit(NO_LIMIT){}
         ~Collection();
@@ -46,12 +47,14 @@ namespace CMS {
         ModelClass* findByAttr(string attr, string value);
         ModelClass* findById(string _id);
         ModelClass* byCid(string cid);
+        int randomIndex(){ return _models.size() == 0 ? -1 : floor(ofRandom(_models.size())); }
+        ModelClass* random(){ return _models.size() == 0 ? NULL : at(randomIndex()); }
 
         ModelClass* previous(ModelClass* model);
         ModelClass* next(ModelClass* model);
 
         void clone(Collection<ModelClass> &source);
-        void syncsFrom(Collection<ModelClass> &collection);
+        void syncsFrom(Collection<ModelClass> &collection, bool clearFirst = true);
 
         void limit(int amount){
             // apply limit to current collection
@@ -62,6 +65,15 @@ namespace CMS {
             mLimit = amount;
         }
 
+        bool has(ModelClass* m){ return index(m) != INVALID_INDEX; }
+        int index(ModelClass* m){
+            for(int i=0; i<_models.size(); i++){
+                if(_models[i] == m)
+                    return i;
+            }
+            
+            return INVALID_INDEX;
+        }
     public: // parsing methods
 
         bool parse(string jsonText);
@@ -94,9 +106,26 @@ namespace CMS {
             filterVectors[attr] = values;
         }
 
-        void removeFilters(){
+        void removeFilters(bool resync = true){
             filterValues.clear();
             filterVectors.clear();
+            
+            // if we're syncing from a collection, the a clean sync, without the just removed filters
+            if(resync && _syncSource){
+                clear();
+                clone(*_syncSource);
+            }
+        }
+
+        void removeFilter(string attr, bool resync = true){
+            filterValues.erase(attr);
+            filterVectors.erase(attr);
+
+            // if we're syncing from a collection, the a clean sync, without the just removed filters
+            if(resync && _syncSource){
+                clear();
+                clone(*_syncSource);
+            }
         }
 
     protected: // filter methods
@@ -488,12 +517,15 @@ namespace CMS {
     }
 
     template <class ModelClass>
-    void Collection<ModelClass>::syncsFrom(Collection<ModelClass> &collection){
+    void Collection<ModelClass>::syncsFrom(Collection<ModelClass> &collection, bool clearFirst){
         // first, UNregister existing sync source callbacks
         if(_syncSource) registerSyncCallbacks(*_syncSource, false);
         _syncSource = &collection;   // we'll need this at destructor-time to unregister event callbacks
-        clone(*_syncSource);        // first, clone the current content
         registerSyncCallbacks(*_syncSource); // second, register callbacks to stay up-to-date on later changes
+
+        // clear collection before syncing with new sync source
+        if(clearFirst) clear();
+        clone(*_syncSource);        // first, clone the current content
     }
 
     // We have to use the Model& type here instead ModelClass& because all used Model types
