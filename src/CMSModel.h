@@ -43,6 +43,7 @@ namespace CMS {
     protected:
         
         vector<string> jsonArrayToIdsVector(string jsonText);
+        vector<string> jsonArrayToStringVector(string jsonText);
         virtual void onSetAttribute(string attr, string value){}
 
     protected:

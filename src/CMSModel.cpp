@@ -66,9 +66,14 @@ string Model::id(){
 
 // Convenience method with built-in support for MongoDB-style id format
 vector<string> Model::jsonArrayToIdsVector(string jsonText){
+    return jsonArrayToStringVector(jsonText);
+}
+
+// Convenience method with built-in support for MongoDB-style id format
+vector<string> Model::jsonArrayToStringVector(string jsonText){
     vector<string> ids;
     ofxJSONElement json;
-    
+
     if(!json.parse(jsonText)){
         ofLogWarning() << "Couldn't parse json: " << jsonText;
         return ids;
@@ -78,16 +83,16 @@ vector<string> Model::jsonArrayToIdsVector(string jsonText){
         ofLogWarning() << "ObjectModel's personas attribute is not an array: " << jsonText;
         return ids;
     }
-
+    
     // loop over each value in json array and add it to our ids vector
     for(int i=0; i<json.size(); i++){
         // mongoDB-style id
         if(json[i].isObject() && json[i]["$oid"] != NULL && json[i]["$oid"].isString()){
             ids.push_back(json[i]["$oid"].asString());
-        // simple string id
+            // simple string id
         } else if(json[i].isString()){
             ids.push_back(json[i].asString());
-        // invalid value
+            // invalid value
         } else {
             ofLogWarning() << "Invalid value in json array: " << ((ofxJSONElement)json[i]).getRawString(false);
         }
@@ -95,4 +100,3 @@ vector<string> Model::jsonArrayToIdsVector(string jsonText){
 
     return ids;
 }
-
