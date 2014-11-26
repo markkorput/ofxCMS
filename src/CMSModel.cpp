@@ -33,6 +33,7 @@ Model* Model::set(string attr, string value, bool notify){
 
     if(old_value != value){
         static AttrChangeArgs args;
+        args.model = this;
         args.attr = attr;
         args.value = value;
         ofNotifyEvent(attributeChangedEvent, args, this);

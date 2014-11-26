@@ -13,9 +13,12 @@
 
 namespace CMS {
 
+    class Model;
+
     // used in attributeChangeEvent notifications
     class AttrChangeArgs {
     public:
+        Model *model;
         string attr;
         string value;
     };

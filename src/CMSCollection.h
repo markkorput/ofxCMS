@@ -181,7 +181,7 @@ namespace CMS {
                     return false;
                 }
             }
-            
+
             return true;
         }
 
@@ -206,8 +206,22 @@ namespace CMS {
         void registerSyncCallbacks(Collection<ModelClass> &otherCollection, bool _register = true){
             if(_register){
                 ofAddListener(otherCollection.modelAddedEvent, this, &Collection<ModelClass>::onSyncSourceModelAdded);
+                ofAddListener(otherCollection.modelChangedEvent, this, &Collection<ModelClass>::onSyncSourceModelChanged);
             } else {
                 ofRemoveListener(otherCollection.modelAddedEvent, this, &Collection<ModelClass>::onSyncSourceModelAdded);
+                ofRemoveListener(otherCollection.modelChangedEvent, this, &Collection<ModelClass>::onSyncSourceModelChanged);
+            }
+        }
+
+        void registerModelCallbacks(ModelClass* model, bool _register = true){
+            if(_register){
+                // when a models (self-)destructs, we gotta remove it from our collection,
+                // otherwise we end up with invalid pointers
+                ofAddListener(model->beforeDestroyEvent, this, &CMS::Collection<ModelClass>::onModelDestroying);
+                ofAddListener(model->attributeChangedEvent, this, &Collection<ModelClass>::onModelAttributeChanged);
+            } else {
+                ofRemoveListener(model->attributeChangedEvent, this, &Collection<ModelClass>::onModelAttributeChanged);
+                ofRemoveListener(model->beforeDestroyEvent, this, &CMS::Collection<ModelClass>::onModelDestroying);
             }
         }
 
@@ -216,6 +230,8 @@ namespace CMS {
         // NOTE: Model& type, not ModelClass& (see comments at implementation)
         void onModelDestroying(Model& model);
         void onSyncSourceModelAdded(ModelClass &m);
+        void onSyncSourceModelChanged(AttrChangeArgs &args);
+        void onModelAttributeChanged(AttrChangeArgs &args);
         
     public: // events
         
@@ -223,6 +239,7 @@ namespace CMS {
         ofEvent <ModelClass> modelAddedEvent;
         ofEvent <ModelClass> modelRemovedEvent;
         ofEvent <ModelClass> modelRejectedEvent;
+        ofEvent <AttrChangeArgs> modelChangedEvent;
 
     protected: // attributes
 
@@ -282,9 +299,7 @@ namespace CMS {
         // add to our collection
         _models.push_back(model);
 
-        // when a models (self-)destructs, we gotta remove it from our collection,
-        // otherwise we end up with invalid pointers
-        ofAddListener(model->beforeDestroyEvent, this, &CMS::Collection<ModelClass>::onModelDestroying);
+        registerModelCallbacks(model);
 
         // let's tell the world
         if(notify) ofNotifyEvent(modelAddedEvent, *model, this);
@@ -298,8 +313,7 @@ namespace CMS {
         // get specified model's index
         for(int i=0; i<_models.size(); i++){
             if(_models[i] == model || _models[i]->cid() == model->cid()){
-                // This event listener is added in our ::add() function
-                ofRemoveListener(model->beforeDestroyEvent, this, &CMS::Collection<ModelClass>::onModelDestroying);
+                registerModelCallbacks(model, false);
 
                 _models.erase(_models.begin() + i);
                 ofNotifyEvent(modelRemovedEvent, *model, this);
@@ -573,12 +587,36 @@ namespace CMS {
         remove((ModelClass*)&model);
     }
 
+    // We have to use the Model& type here instead ModelClass& because all used Model types
+    // inherit from Model which has an ofEvent<Model> beforeDestroyEvent attribute which they all use...
+    template <class ModelClass>
+    void Collection<ModelClass>::onModelAttributeChanged(AttrChangeArgs &args){
+        // trigger a "forward" event; anybody can hook into this event to be notified
+        // about changes in any of the collection's models
+        ofNotifyEvent(modelChangedEvent, args, this);
+
+        // if one of our models changed and with the new changes no longer
+        // passes our active filters; remove it
+        if(!modelPassesActiveFilters((ModelClass*)args.model)){
+            remove((ModelClass*)args.model);
+        }
+    }
+
     template <class ModelClass>
     void Collection<ModelClass>::onSyncSourceModelAdded(ModelClass &m){
         // if our sync source gets a new model, we follow...
         add(&m);
     }
 
+    template <class ModelClass>
+    void Collection<ModelClass>::onSyncSourceModelChanged(AttrChangeArgs &args){
+        // if our sync source's model isn't in our collection, but DOES pass our filters, add it
+        if(args.model == NULL) return;
+        if(this->findById(args.model->id()) != NULL) return; // already in our collection
+        if(modelPassesActiveFilters((ModelClass*)args.model)) add((ModelClass*)args.model);
+    }
+    
+    
 }; // namespace CMS
 
 
