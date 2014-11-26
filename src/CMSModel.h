@@ -37,15 +37,18 @@ namespace CMS {
 
         // void destroy(bool notify = true);
 
+    public: // static helpers
+
+        static vector<string> jsonArrayToIdsVector(string jsonText);
+        static vector<string> jsonArrayToStringVector(string jsonText);
+
     public: // events
 
         ofEvent <AttrChangeArgs> attributeChangedEvent;
         ofEvent <Model> beforeDestroyEvent;
 
-    protected:
+    protected: // callbacks
         
-        vector<string> jsonArrayToIdsVector(string jsonText);
-        vector<string> jsonArrayToStringVector(string jsonText);
         virtual void onSetAttribute(string attr, string value){}
 
     protected:
