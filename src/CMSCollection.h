@@ -78,11 +78,44 @@ namespace CMS {
             
             return INVALID_INDEX;
         }
+
     public: // parsing methods
 
         bool parse(string jsonText);
-        void parse(const ofxJSONElement & node);
+        bool parse(const ofxJSONElement & node);
         void parseModelJson(ModelClass *model, string jsonText);
+
+        // "merge" all models of another collection into our own collection.
+        // for each model in the other collection, it will try to find an existing
+        // model in our own collection (matching on model->id()). If found, that existing model
+        // is updated with the attributes of the other collection's model. If NOT found,
+        // a new model is created with the attributes of the other collection's model and
+        // added to our collection
+        void merge(Collection<CMS::Model> &otherCollection){
+            // loop over other collection's models
+            for(int i=0; i<otherCollection.count(); i++){
+                CMS::Model* otherModel = otherCollection.at(i);
+                if(otherModel == NULL) continue;
+
+                // find existing matching model in our own collection
+                ModelClass* existing = this->findById(otherModel->id());
+                if(existing){
+                    // update existing model
+                    existing->set(otherModel->attributes());
+                    // done
+                    continue;
+                }
+
+                // no existing model found, create new model
+                ModelClass* newModel = new ModelClass();
+                // initialize new model with data from other model
+                newModel->set(otherModel->attributes());
+                // add it to our collection
+                if(!add(newModel)){
+                    delete newModel;
+                }
+            }
+        }
 
     public: // filter methods
 
@@ -452,13 +485,13 @@ namespace CMS {
 
     // for convenience
     template <class ModelClass>
-    void Collection<ModelClass>::parse(const ofxJSONElement & node){
+    bool Collection<ModelClass>::parse(const ofxJSONElement & node){
         if(node.type() == Json::nullValue) return;
         
         // Can't figure out how to use this kinda object, so for now; let the text-based parse method deal with it
         // (meaning we'll convert back to text, and parse that to json again... yea...)
-        if(node.type() == Json::stringValue) parse(node.asString());
-        parse(node.getRawString());
+        if(node.type() == Json::stringValue) return parse(node.asString());
+        return parse(node.getRawString());
     }
 
     template <class ModelClass>

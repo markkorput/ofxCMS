@@ -43,6 +43,13 @@ Model* Model::set(string attr, string value, bool notify){
     return this;
 }
 
+
+Model* Model::set(map<string, string> &attrs){
+    for(map<string, string>::iterator it=attrs.begin(); it != attrs.end(); it++){
+        this->set(it->first, it->second);
+    }
+}
+
 string Model::get(string attr, string _default){
     return (_attributes.find(attr) == _attributes.end()) ? _default : _attributes[attr];
 }

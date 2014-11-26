@@ -29,13 +29,15 @@ namespace CMS {
         ~Model();
 
         Model* set(string attr, string value, bool notify = true);
+        Model* set(map<string, string> &attrs);
         string get(string attr, string _default = "");
         string id();
         string cid();
         map<string, string> &attributes(){ return _attributes; }
 
-
         // void destroy(bool notify = true);
+
+    public: // events
 
         ofEvent <AttrChangeArgs> attributeChangedEvent;
         ofEvent <Model> beforeDestroyEvent;
