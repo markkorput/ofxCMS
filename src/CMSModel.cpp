@@ -49,6 +49,8 @@ Model* Model::set(map<string, string> &attrs){
     for(map<string, string>::iterator it=attrs.begin(); it != attrs.end(); it++){
         this->set(it->first, it->second);
     }
+
+	return this;
 }
 
 string Model::get(string attr, string _default){

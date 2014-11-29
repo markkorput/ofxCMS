@@ -500,7 +500,7 @@ namespace CMS {
     // for convenience
     template <class ModelClass>
     bool Collection<ModelClass>::parse(const ofxJSONElement & node){
-        if(node.type() == Json::nullValue) return;
+        if(node.type() == Json::nullValue) return false;
         
         // Can't figure out how to use this kinda object, so for now; let the text-based parse method deal with it
         // (meaning we'll convert back to text, and parse that to json again... yea...)
