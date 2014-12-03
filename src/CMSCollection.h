@@ -82,7 +82,7 @@ namespace CMS {
     public: // parsing methods
 
         bool parse(string jsonText, bool doRemove = true, bool doUpdate = true, bool doCreate = true);
-        bool parse(const ofxJSONElement & node);
+        bool parse(const ofxJSONElement & node, bool doRemove = true, bool doUpdate = true, bool doCreate = true);
         void parseModelJson(ModelClass *model, string jsonText);
 
         // "merge" all models of another collection into our own collection.
@@ -91,10 +91,10 @@ namespace CMS {
         // is updated with the attributes of the other collection's model. If NOT found,
         // a new model is created with the attributes of the other collection's model and
         // added to our collection
-        void merge(Collection<CMS::Model> &otherCollection){
+        void merge(Collection<ModelClass> &otherCollection){
             // loop over other collection's models
             for(int i=0; i<otherCollection.count(); i++){
-                CMS::Model* otherModel = otherCollection.at(i);
+                ModelClass* otherModel = otherCollection.at(i);
                 if(otherModel == NULL) continue;
 
                 // find existing matching model in our own collection
@@ -501,12 +501,12 @@ namespace CMS {
 
     // for convenience
     template <class ModelClass>
-    bool Collection<ModelClass>::parse(const ofxJSONElement & node){
+    bool Collection<ModelClass>::parse(const ofxJSONElement & node, bool doRemove, bool doUpdate, bool doCreate){
         if(node.type() == Json::nullValue) return false;
         
         // Can't figure out how to use this kinda object, so for now; let the text-based parse method deal with it
         // (meaning we'll convert back to text, and parse that to json again... yea...)
-        if(node.type() == Json::stringValue) return parse(node.asString());
+        if(node.type() == Json::stringValue) return parse(node.asString(), doRemove, doUpdate, doCreate);
         return parse(node.getRawString());
     }
 
