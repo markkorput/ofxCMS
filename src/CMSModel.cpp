@@ -102,7 +102,11 @@ vector<string> Model::jsonArrayToStringVector(string jsonText){
             // simple string id
         } else if(json[i].isString()){
             ids.push_back(json[i].asString());
-            // invalid value
+        } else if(json[i].isInt()){
+            ids.push_back(ofToString(json[i].asInt()));
+        } else if(json[i].isDouble()){
+            ids.push_back(ofToString(json[i].asDouble()));
+        // unknown/invalid value
         } else {
             ofLogWarning() << "Invalid value in json array: " << ((ofxJSONElement)json[i]).getRawString(false);
         }
