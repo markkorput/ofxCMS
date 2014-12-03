@@ -81,7 +81,7 @@ namespace CMS {
 
     public: // parsing methods
 
-        bool parse(string jsonText);
+        bool parse(string jsonText, bool doRemove = true, bool doUpdate = true, bool doCreate = true);
         bool parse(const ofxJSONElement & node);
         void parseModelJson(ModelClass *model, string jsonText);
 
@@ -431,7 +431,7 @@ namespace CMS {
     }
 
     template <class ModelClass>
-    bool Collection<ModelClass>::parse(string jsonText){
+    bool Collection<ModelClass>::parse(string jsonText, bool doRemove, bool doUpdate, bool doCreate){
         ofxJSONElement json;
 
         // try to parse json, abort if it fails
@@ -446,40 +446,42 @@ namespace CMS {
             return false;
         }
 
-        // loop over all models that were already in the collection,
-        // remove any model for which we can't find any record in the new json
-        // IMPORTANT! Gotta start with the highest indexes first, because otherwise indexes
-        // of higher-up models get messed up when removing models earlier in the list
-        for(int i=_models.size()-1; i>=0; i--){
-            // assume we'll have to remove the model as long as we haven't found a matching record in the json
-            bool remove_model = true;
-            
-            // get the current model's id to match on
-            string id = _models[i]->id();
-            
-            // loop over all items in the new json to see if there's a record with the same id
-            for(int j=0; j<json.size(); j++){
-                // if there's a record with this id, we don't have to do anything
-                if(json[j]["_id"]["$oid"] == id)
-                    remove_model = false;
-            }
-            
-            // if remove_model us still true, this means that no records with a matching id was found,
-            // meaning this in-memory record in no-longer was removed from the collection and we should drop it as well
-            if(remove_model){
-                destroy(_models[i]);
+        if(doRemove){
+            // loop over all models that were already in the collection,
+            // remove any model for which we can't find any record in the new json
+            // IMPORTANT! Gotta start with the highest indexes first, because otherwise indexes
+            // of higher-up models get messed up when removing models earlier in the list
+            for(int i=_models.size()-1; i>=0; i--){
+                // assume we'll have to remove the model as long as we haven't found a matching record in the json
+                bool remove_model = true;
+                
+                // get the current model's id to match on
+                string id = _models[i]->id();
+                
+                // loop over all items in the new json to see if there's a record with the same id
+                for(int j=0; j<json.size(); j++){
+                    // if there's a record with this id, we don't have to do anything
+                    if(json[j]["_id"]["$oid"] == id)
+                        remove_model = false;
+                }
+                
+                // if remove_model us still true, this means that no records with a matching id was found,
+                // meaning this in-memory record in no-longer was removed from the collection and we should drop it as well
+                if(remove_model){
+                    destroy(_models[i]);
+                }
             }
         }
 
         for(int i = 0; i < json.size(); i++) {
-            ModelClass *existing = findById(json[i]["_id"]["$oid"].asString());
+            ModelClass *existing = json[i]["_id"]["$oid"].isNull() ? NULL : findById(json[i]["_id"]["$oid"].asString());
 
             // found existing model with same id? update it by setting its json attribute
-            if(existing){
+            if(existing && doUpdate){
                 // let the Model attribute changed callbacks deal with further parsing
                 parseModelJson(existing, ((ofxJSONElement)json[i]).getRawString(false));
             // do an early limit check, to avoid unnecessary parsing
-            } else if(!limitReached()){
+            } else if(!limitReached() && doCreate){
                 //  not existing model found? Add a new one
                 ModelClass *new_model = new ModelClass();
 
