@@ -28,13 +28,14 @@ namespace CMS {
         const static int NO_LIMIT = -1;
         const static int INVALID_INDEX = -1;
 
-        Collection() : _syncSource(NULL), mLimit(NO_LIMIT){}
+        Collection() : _syncSource(NULL), mLimit(NO_LIMIT), bFIFO(false){}
         ~Collection();
 
         void initialize(vector< map<string, string> > &_data);
 
         bool add(ModelClass *model, bool notify = true);
         void remove(ModelClass *model);
+        void remove(int index);
         void destroy(ModelClass *model);
         void destroyBy(string key, string value);
         void clear();
@@ -68,6 +69,9 @@ namespace CMS {
         bool limitReached(){
             return mLimit != NO_LIMIT && _models.size() >= mLimit;
         }
+
+        void setFifo(bool fifo){ bFIFO = fifo; }
+        bool getFifo(){ return bFIFO; }
 
         bool has(ModelClass* m){ return index(m) != INVALID_INDEX; }
         int index(ModelClass* m){
@@ -240,6 +244,7 @@ namespace CMS {
         ofEvent <ModelClass> modelRemovedEvent;
         ofEvent <ModelClass> modelRejectedEvent;
         ofEvent <AttrChangeArgs> modelChangedEvent;
+        ofEvent < Collection<ModelClass> > fifoEvent;
 
     protected: // attributes
 
@@ -248,6 +253,9 @@ namespace CMS {
         map<string, string> filterValues;
         map< string, vector<string> > filterVectors;
         int mLimit;
+        // first in first out; if true: when limit is reached, first element gets removed
+        // instead of new elements being rejected
+        bool bFIFO;
 
     }; // class Collection
 
@@ -284,16 +292,22 @@ namespace CMS {
         // What the hell are we supposed to do with this??
         if(model == NULL) return false;
 
-        // reached our limit, can't add any more
-        if(limitReached()){
-            ofLog() << "Collection limit reached, can't add model";
-            return false;
-        }
-
         // apply active filters
         if(!modelPassesActiveFilters(model)){
             ofNotifyEvent(modelRejectedEvent, *model, this);
             return false;
+        }
+
+        // reached our limit, either remove first model, or reject this new model
+        if(limitReached()){
+            if(bFIFO){
+                ofLog() << "Collection limit ("+ofToString(mLimit)+") reached, removing first model (FIFO)";
+                ofNotifyEvent(fifoEvent, *this, this);
+                remove(0);
+            } else {
+                ofLog() << "Collection limit ("+ofToString(mLimit)+") reached, can't add model (NO FIFO)";
+                return false;
+            }
         }
 
         // add to our collection
@@ -313,19 +327,19 @@ namespace CMS {
         // get specified model's index
         for(int i=0; i<_models.size(); i++){
             if(_models[i] == model || _models[i]->cid() == model->cid()){
-                registerModelCallbacks(model, false);
-
-                _models.erase(_models.begin() + i);
-                ofNotifyEvent(modelRemovedEvent, *model, this);
-
-                // remove doesn't destroy!
-                // destroy(model);
-                
-                // we're done, return
-                return;
+                remove(i);
             }
         }
+    }
 
+    template <class ModelClass>
+    void CMS::Collection<ModelClass>::remove(int index){
+        ModelClass* model = at(index);
+        registerModelCallbacks(model, false);
+        _models.erase(_models.begin() + index);
+        ofNotifyEvent(modelRemovedEvent, *model, this);
+        // remove doesn't destroy!
+        // destroy(model);
         // ofLogWarning() << "Couldn't remove model because it wasn't found in the _models collection";
     }
     
@@ -480,16 +494,21 @@ namespace CMS {
             if(existing && doUpdate){
                 // let the Model attribute changed callbacks deal with further parsing
                 parseModelJson(existing, ((ofxJSONElement)json[i]).getRawString(false));
-            // do an early limit check, to avoid unnecessary parsing
-            } else if(!limitReached() && doCreate){
-                //  not existing model found? Add a new one
-                ModelClass *new_model = new ModelClass();
 
-                parseModelJson(new_model, ((ofxJSONElement)json[i]).getRawString(false));
-                // if we couldn't add this model to the collection
-                // destroy the model, otherwise it's just hanging out in memory
-                if(!add(new_model)){
-                    delete new_model;
+            } else if(doCreate){
+                // do an early limit check, to avoid unnecessary parsing
+                if(limitReached() && !bFIFO){
+                    ofLog() << "Collection parsing: model skipped because limit reached (NO FIFO)";
+                } else {
+                    //  not existing model found? Add a new one
+                    ModelClass *new_model = new ModelClass();
+
+                    parseModelJson(new_model, ((ofxJSONElement)json[i]).getRawString(false));
+                    // if we couldn't add this model to the collection
+                    // destroy the model, otherwise it's just hanging out in memory
+                    if(!add(new_model)){
+                        delete new_model;
+                    }
                 }
             }
         }
