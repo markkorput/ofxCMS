@@ -56,6 +56,7 @@ namespace CMS {
 
         void clone(Collection<ModelClass> &source);
         void syncsFrom(Collection<ModelClass> &collection, bool clearFirst = true);
+        void stopSyncing();
 
         void limit(int amount){
             // apply limit to current collection
@@ -212,6 +213,7 @@ namespace CMS {
 
         void registerSyncCallbacks(Collection<ModelClass> &otherCollection, bool _register = true){
             if(_register){
+                ofLogWarning() << "TODO: register onDestroy callback as well, to unregister when syc source destroys";
                 ofAddListener(otherCollection.modelAddedEvent, this, &Collection<ModelClass>::onSyncSourceModelAdded);
                 ofAddListener(otherCollection.modelChangedEvent, this, &Collection<ModelClass>::onSyncSourceModelChanged);
             } else {
@@ -605,13 +607,23 @@ namespace CMS {
     template <class ModelClass>
     void Collection<ModelClass>::syncsFrom(Collection<ModelClass> &collection, bool clearFirst){
         // first, UNregister existing sync source callbacks
-        if(_syncSource) registerSyncCallbacks(*_syncSource, false);
-        _syncSource = &collection;   // we'll need this at destructor-time to unregister event callbacks
-        registerSyncCallbacks(*_syncSource); // second, register callbacks to stay up-to-date on later changes
-
+        stopSyncing();
+        // we'll need this at destructor-time to unregister event callbacks
+        _syncSource = &collection;   
         // clear collection before syncing with new sync source
         if(clearFirst) clear();
-        clone(*_syncSource);        // first, clone the current content
+        // first, clone the current content
+        clone(*_syncSource);
+        // second, register callbacks to stay up-to-date on later changes
+        registerSyncCallbacks(*_syncSource);
+    }
+
+    template <class ModelClass>
+    void Collection<ModelClass>::stopSyncing(){
+        if(_syncSource){
+            registerSyncCallbacks(*_syncSource, false);
+            _syncSource = NULL;
+        }
     }
 
     // We have to use the Model& type here instead ModelClass& because all used Model types
