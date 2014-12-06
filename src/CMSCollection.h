@@ -535,7 +535,7 @@ namespace CMS {
         // Can't figure out how to use this kinda object, so for now; let the text-based parse method deal with it
         // (meaning we'll convert back to text, and parse that to json again... yea...)
         if(node.type() == Json::stringValue) return parse(node.asString(), doRemove, doUpdate, doCreate);
-        return parse(node.getRawString());
+        return parse(node.getRawString(), doRemove, doUpdate, doCreate);
     }
 
     template <class ModelClass>
