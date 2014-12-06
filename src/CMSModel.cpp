@@ -68,10 +68,10 @@ string Model::id(){
     return get("id", get("_id", cid()));
 }
 
-// this was causing SIGABRT exceptions...
+//// this was causing SIGABRT exceptions...
 //void Model::destroy(bool notify){
 //    if(notify) ofNotifyEvent(beforeDestroyEvent, *this, this);
-//    delete this;
+//    // delete this;
 //}
 
 // Convenience method with built-in support for MongoDB-style id format
