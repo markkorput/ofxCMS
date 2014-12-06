@@ -358,7 +358,7 @@ namespace CMS {
     template <class ModelClass>
     void CMS::Collection<ModelClass>::destroy(ModelClass *model){
         if(model == NULL) return;
-        remove(model);
+        remove(model, true /* just remove, no destroy */);
         delete model;
     }
 
