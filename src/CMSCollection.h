@@ -28,7 +28,7 @@ namespace CMS {
         const static int NO_LIMIT = -1;
         const static int INVALID_INDEX = -1;
 
-        Collection() : _syncSource(NULL), mLimit(NO_LIMIT), bFIFO(false){}
+        Collection() : _syncSource(NULL), mLimit(NO_LIMIT), bFIFO(false), bDestroyOnRemove(false){}
         ~Collection();
 
         void initialize(vector< map<string, string> > &_data);
@@ -72,6 +72,9 @@ namespace CMS {
 
         void setFifo(bool fifo){ bFIFO = fifo; }
         bool getFifo(){ return bFIFO; }
+
+        void setDestroyOnRemove(bool enable = true){ bDestroyOnRemove = enable; }
+        bool getDestroyOnRemove(){ return bDestroyOnRemove; }
 
         bool has(ModelClass* m){ return index(m) != INVALID_INDEX; }
         int index(ModelClass* m){
@@ -256,6 +259,8 @@ namespace CMS {
         // first in first out; if true: when limit is reached, first element gets removed
         // instead of new elements being rejected
         bool bFIFO;
+        // destroy models when removing them fmor the collection? (default: false)
+        bool bDestroyOnRemove;
 
     }; // class Collection
 
@@ -335,14 +340,18 @@ namespace CMS {
     template <class ModelClass>
     void CMS::Collection<ModelClass>::remove(int index){
         ModelClass* model = at(index);
+        if(model == NULL) return;
         registerModelCallbacks(model, false);
         _models.erase(_models.begin() + index);
         ofNotifyEvent(modelRemovedEvent, *model, this);
-        // remove doesn't destroy!
-        // destroy(model);
-        // ofLogWarning() << "Couldn't remove model because it wasn't found in the _models collection";
+
+        if(bDestroyOnRemove){
+            ofLog() << "Destroying removed model (id="+model->id()+" bDestroyOnRemove=true)";
+            // destroy(model); // this will try to remove again, which isn't really a problem, just a bit inefficient
+            delete model;
+        }
     }
-    
+
     template <class ModelClass>
     void CMS::Collection<ModelClass>::destroy(ModelClass *model){
         remove(model);
