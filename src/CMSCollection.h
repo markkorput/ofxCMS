@@ -151,9 +151,53 @@ namespace CMS {
             filterVectors[attr] = values;
         }
 
+        // One-time filter: rejection only keep models that DO NOT have a specific key-value combination
+        void rejectBy(string key, string val){
+            // we have to do this backwards! because every time you remove a model,
+            // it messes with all the following index values
+            for(int i=_models.size()-1; i>=0; i--){
+                // get current model
+                ModelClass* model = at(i);
+                // remove it, if it doesn't meet the criteria
+                if(!modelPassesSingleValueRejection(model, key, val)) remove(model);
+            }
+        }
+
+        // one-time multi-value rejection; all models who's attribute match any of the value are removed
+        void rejectBy(string key, vector<string> &values){
+            // we have to do this backwards! because every time you remove a model,
+            // it messes with all the following index values
+            for(int i=_models.size()-1; i>=0; i--){
+                // get current model
+                ModelClass* model = at(i);
+                // remove it, if it doesn't meet the criteria
+                if(!modelPassesMultiValueRejection(model, key, values)) remove(model);
+            }
+        }
+
+        // Active Filter: only keep models without a specific key-value combination
+        // and also apply this filter when new models are added
+        void rejectsBy(string attr, string value){
+            // apply filter on current collection
+            rejectBy(attr, value);
+            // save filter to apply to newly added models
+            rejectValues[attr] = value;
+        }
+
+        // Active Filter: only keep models without any of the specified values for a specific key
+        // and also apply this filter when new models are added
+        void rejectsBy(string attr, vector<string> &values){
+            // apply filter on current collection
+            rejectBy(attr, values);
+            // save filter to apply to newly added models
+            rejectVectors[attr] = values;
+        }
+
         void removeFilters(bool resync = true){
             filterValues.clear();
             filterVectors.clear();
+            rejectValues.clear();
+            rejectVectors.clear();
             
             // if we're syncing from a collection, the a clean sync, without the just removed filters
             if(resync && _syncSource){
@@ -165,6 +209,8 @@ namespace CMS {
         void removeFilter(string attr, bool resync = true){
             filterValues.erase(attr);
             filterVectors.erase(attr);
+            rejectValues.erase(attr);
+            rejectVectors.erase(attr);
 
             // if we're syncing from a collection, the a clean sync, without the just removed filters
             if(resync && _syncSource){
@@ -206,6 +252,37 @@ namespace CMS {
             return model->get(attr) == value;
         }
 
+        bool modelPassesActiveRejections(ModelClass* model){
+            // single value filters
+            for (map<string, string>::iterator it = rejectValues.begin(); it!=rejectValues.end(); it++){
+                if(!modelPassesSingleValueRejection(model, it->first, it->second)){
+                    return false;
+                }
+            }
+
+            // multi value filters
+            for (map< string, vector<string> >::iterator it = rejectVectors.begin(); it!=rejectVectors.end(); it++){
+                if(!modelPassesMultiValueRejection(model, it->first, it->second)){
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        bool modelPassesMultiValueRejection(ModelClass *model, string attr, vector<string> &values){
+            for(int i=0; i<values.size(); i++){
+                // passes if it has one of the specified values
+                if(model->get(attr) == values[i]) return false;
+            }
+
+            return true;
+        }
+
+        bool modelPassesSingleValueRejection(ModelClass *model, string attr, string value){
+            return model->get(attr) != value;
+        }
+        
     protected: // methods
 
         int indexByCid(string cid);
@@ -257,6 +334,9 @@ namespace CMS {
         Collection<ModelClass>* _syncSource;
         map<string, string> filterValues;
         map< string, vector<string> > filterVectors;
+        map<string, string> rejectValues;
+        map< string, vector<string> > rejectVectors;
+
         int mLimit;
         // first in first out; if true: when limit is reached, first element gets removed
         // instead of new elements being rejected
@@ -300,7 +380,7 @@ namespace CMS {
         if(model == NULL) return false;
 
         // apply active filters
-        if(!modelPassesActiveFilters(model)){
+        if(!modelPassesActiveFilters(model) || !modelPassesActiveRejections(model)){
             ofNotifyEvent(modelRejectedEvent, *model, this);
             return false;
         }
