@@ -290,12 +290,14 @@ namespace CMS {
 
         void registerSyncCallbacks(Collection<ModelClass> &otherCollection, bool _register = true){
             if(_register){
-                ofLogWarning() << "TODO: register onDestroy callback as well, to unregister when syc source destroys";
                 ofAddListener(otherCollection.modelAddedEvent, this, &Collection<ModelClass>::onSyncSourceModelAdded);
                 ofAddListener(otherCollection.modelChangedEvent, this, &Collection<ModelClass>::onSyncSourceModelChanged);
+                // ofLogWarning() << "TODO: register onDestroy callback as well, to unregister when sync source destroys";
+                ofAddListener(otherCollection.collectionDestroyingEvent, this, &Collection<ModelClass>::onSyncSourceDestroying);
             } else {
                 ofRemoveListener(otherCollection.modelAddedEvent, this, &Collection<ModelClass>::onSyncSourceModelAdded);
                 ofRemoveListener(otherCollection.modelChangedEvent, this, &Collection<ModelClass>::onSyncSourceModelChanged);
+                ofRemoveListener(otherCollection.collectionDestroyingEvent, this, &Collection<ModelClass>::onSyncSourceDestroying);
             }
         }
 
@@ -318,10 +320,12 @@ namespace CMS {
         void onSyncSourceModelAdded(ModelClass &m);
         void onSyncSourceModelChanged(AttrChangeArgs &args);
         void onModelAttributeChanged(AttrChangeArgs &args);
+        void onSyncSourceDestroying(Collection<ModelClass> &syncSourceCollection);
         
     public: // events
         
         ofEvent <void> collectionInitializedEvent;
+        ofEvent < Collection<ModelClass> > collectionDestroyingEvent;
         ofEvent <ModelClass> modelAddedEvent;
         ofEvent <ModelClass> modelRemovedEvent;
         ofEvent <ModelClass> modelRejectedEvent;
@@ -352,6 +356,8 @@ namespace CMS {
 
     template <class ModelClass>
     CMS::Collection<ModelClass>::~Collection(){
+        ofNotifyEvent(collectionDestroyingEvent, *this, this);
+
         for(int i=0; i<_models.size(); i++){
             remove(_models[i]);
             // delete _models[i]; // destructing collections don't necessarily detroy their content
@@ -742,6 +748,10 @@ namespace CMS {
         if(modelPassesActiveFilters((ModelClass*)args.model)) add((ModelClass*)args.model);
     }
     
+    template <class ModelClass>
+    void Collection<ModelClass>::onSyncSourceDestroying(Collection<ModelClass> &syncSourceCollection){
+        stopSyncing();
+    }
     
 }; // namespace CMS
 
