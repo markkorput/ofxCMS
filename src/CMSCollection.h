@@ -34,8 +34,9 @@ namespace CMS {
         void initialize(vector< map<string, string> > &_data);
 
         bool add(ModelClass *model, bool notify = true);
-        void remove(ModelClass *model, bool justRemove = false);
-        void remove(int index, bool justRemove = false);
+        ModelClass* remove(ModelClass *model, bool justRemove = false);
+        ModelClass* remove(int index, bool justRemove = false);
+        void destroy(int index);
         void destroy(ModelClass *model);
         void destroyBy(string key, string value);
         void clear();
@@ -423,17 +424,19 @@ namespace CMS {
     }
 
     template <class ModelClass>
-    void CMS::Collection<ModelClass>::remove(ModelClass *model, bool justRemove){
+    ModelClass* CMS::Collection<ModelClass>::remove(ModelClass *model, bool justRemove){
         // get specified model's index
         for(int i=_models.size()-1; i>=0; i--){
             if(_models[i] == model /*|| _models[i]->cid() == model->cid()*/){
-                remove(i, justRemove);
+                return remove(i, justRemove);
             }
         }
+        
+        return NULL;
     }
 
     template <class ModelClass>
-    void CMS::Collection<ModelClass>::remove(int index, bool justRemove){
+    ModelClass* CMS::Collection<ModelClass>::remove(int index, bool justRemove){
         ModelClass* model = at(index);
         if(model == NULL) return;
 
@@ -441,13 +444,16 @@ namespace CMS {
         _models.erase(_models.begin() + index);
         ofNotifyEvent(modelRemovedEvent, *model, this);
 
-        if(justRemove) return;
+        if(justRemove) return model;
 
         if(bDestroyOnRemove){
             ofLog() << "Destroying removed model (id="+model->id()+", bDestroyOnRemove=true)";
             // destroy(model); // this will try to remove again, which isn't really a problem, just a bit inefficient
             delete model;
+            return NULL;
         }
+
+        return model;
     }
 
     template <class ModelClass>
@@ -458,9 +464,16 @@ namespace CMS {
     }
 
     template <class ModelClass>
+    void CMS::Collection<ModelClass>::destroy(int idx){
+        ModelClass* m = remove(idx, true /* just remove no destroy */);
+        delete m;
+    }
+
+    template <class ModelClass>
     void CMS::Collection<ModelClass>::destroyAll(){
         for(int i=_models.size()-1; i>=0; i--){
-            delete _models[i];
+            // delete _models[i];
+            destroy(i);
         }
     }
 
