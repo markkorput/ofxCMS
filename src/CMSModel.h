@@ -29,7 +29,7 @@ namespace CMS {
 
     public:
         Model();
-        ~Model();
+        // ~Model();
 
         Model* set(string attr, string value, bool notify = true);
         Model* set(map<string, string> &attrs);
@@ -38,7 +38,7 @@ namespace CMS {
         string cid();
         map<string, string> &attributes(){ return _attributes; }
 
-        // void destroy(bool notify = true);
+        void destroy(bool notify = true);
 
     public: // static helpers
 

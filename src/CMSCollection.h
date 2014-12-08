@@ -427,7 +427,7 @@ namespace CMS {
             ofLog() << "this is crazy: " << this->_models.size();
             return model;
         }
-        // ofLog() << "_models size: " << this->_models.size();
+        ofLog() << "_models size: " << this->_models.size();
 
         for(int i=this->_models.size()-1; i>=0; i--){
             if(this->_models[i] == model || _models[i]->cid() == model->cid()){
@@ -445,14 +445,17 @@ namespace CMS {
 
         registerModelCallbacks(model, false);
         _models.erase(_models.begin() + index);
-        ofNotifyEvent(modelRemovedEvent, *model, this);
-
+        
         if(justRemove) return model;
+
+        // todo; this should probably happen even is justRemove == true
+        ofNotifyEvent(modelRemovedEvent, *model, this);
 
         if(bDestroyOnRemove){
             ofLog() << "Destroying removed model (id="+model->id()+", bDestroyOnRemove=true)";
             // destroy(model); // this will try to remove again, which isn't really a problem, just a bit inefficient
-            delete model;
+            // delete model;
+            model->destroy();
             return NULL;
         }
 
@@ -463,13 +466,15 @@ namespace CMS {
     void CMS::Collection<ModelClass>::destroy(ModelClass *model){
         if(model == NULL) return;
         remove(model, true /* just remove, no destroy */);
-        delete model;
+        // delete model;
+        model->destroy();
     }
 
     template <class ModelClass>
     void CMS::Collection<ModelClass>::destroy(int idx){
         ModelClass* m = remove(idx, true /* just remove no destroy */);
-        delete m;
+        // delete m;
+        m->destroy();
     }
 
     template <class ModelClass>

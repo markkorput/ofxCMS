@@ -21,9 +21,9 @@ Model::Model(){
     mCidCounter++;
 }
 
-Model::~Model(){
-    ofNotifyEvent(beforeDestroyEvent, *this, this);
-}
+// Model::~Model(){
+//     ofNotifyEvent(beforeDestroyEvent, *this, this);
+// }
 
 Model* Model::set(string attr, string value, bool notify){
     string old_value = _attributes[attr];
@@ -69,10 +69,10 @@ string Model::id(){
 }
 
 //// this was causing SIGABRT exceptions...
-//void Model::destroy(bool notify){
-//    if(notify) ofNotifyEvent(beforeDestroyEvent, *this, this);
-//    // delete this;
-//}
+void Model::destroy(bool notify){
+   if(notify) ofNotifyEvent(beforeDestroyEvent, *this, this);
+   delete this;
+}
 
 // Convenience method with built-in support for MongoDB-style id format
 vector<string> Model::jsonArrayToIdsVector(string jsonText){
