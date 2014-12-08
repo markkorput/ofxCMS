@@ -87,6 +87,13 @@ namespace CMS {
             return INVALID_INDEX;
         }
 
+        void shuffle(){
+            for(int i=count()-1; i>=0; i--){
+                ModelClass* tmp = _models.back();
+                _models.pop_back(); // remove the last one
+                _models.insert(_models.begin() + ofRandom(_models.size()), tmp); // insert at random position
+            }
+        }
     public: // parsing methods
 
         bool parse(string jsonText, bool doRemove = true, bool doUpdate = true, bool doCreate = true);
@@ -419,7 +426,7 @@ namespace CMS {
     void CMS::Collection<ModelClass>::remove(ModelClass *model, bool justRemove){
         // get specified model's index
         for(int i=_models.size()-1; i>=0; i--){
-            if(_models[i] == model || _models[i]->cid() == model->cid()){
+            if(_models[i] == model /*|| _models[i]->cid() == model->cid()*/){
                 remove(i, justRemove);
             }
         }
