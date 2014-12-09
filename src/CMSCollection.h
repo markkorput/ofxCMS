@@ -441,7 +441,7 @@ namespace CMS {
     template <class ModelClass>
     ModelClass* CMS::Collection<ModelClass>::remove(int index, bool justRemove){
         ModelClass* model = at(index);
-        if(model == NULL) return;
+        if(model == NULL) return NULL;
 
         registerModelCallbacks(model, false);
         _models.erase(_models.begin() + index);
