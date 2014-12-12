@@ -422,7 +422,7 @@ namespace CMS {
 
     template <class ModelClass>
     ModelClass* CMS::Collection<ModelClass>::remove(ModelClass *model, bool justRemove){
-        if(model == NULL) return;
+        if(model == NULL) return NULL;
 
 //        // get specified model's index
 //        if(this->_models.size() > 900){
