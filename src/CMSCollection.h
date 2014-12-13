@@ -432,7 +432,7 @@ namespace CMS {
 //        ofLog() << "_models size: " << this->_models.size();
 
         for(int i=this->_models.size()-1; i>=0; i--){
-            if(this->_models[i] == model || _models[i]->cid() == model->cid()){
+            if(this->_models[i] == model /*|| _models[i]->cid() == model->cid()*/){
                 return remove(i, justRemove);
             }
         }
