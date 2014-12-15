@@ -34,8 +34,8 @@ namespace CMS {
         void initialize(vector< map<string, string> > &_data);
 
         bool add(ModelClass *model, bool notify = true);
-        ModelClass* remove(ModelClass *model, bool justRemove = false);
-        ModelClass* remove(int index, bool justRemove = false);
+        ModelClass* remove(ModelClass *model, bool doDestroy = true);
+        ModelClass* remove(int index, bool doDestroy = true);
         void destroy(int index);
         void destroy(ModelClass *model);
         void destroyBy(string key, string value);
@@ -313,11 +313,11 @@ namespace CMS {
             if(_register){
                 // when a models (self-)destructs, we gotta remove it from our collection,
                 // otherwise we end up with invalid pointers
-                ofAddListener(model->beforeDestroyEvent, this, &CMS::Collection<ModelClass>::onModelDestroying);
+                ofAddListener(model->beforeDestroyEvent, this, &Collection<ModelClass>::onModelDestroying);
                 ofAddListener(model->attributeChangedEvent, this, &Collection<ModelClass>::onModelAttributeChanged);
             } else {
                 ofRemoveListener(model->attributeChangedEvent, this, &Collection<ModelClass>::onModelAttributeChanged);
-                ofRemoveListener(model->beforeDestroyEvent, this, &CMS::Collection<ModelClass>::onModelDestroying);
+                ofRemoveListener(model->beforeDestroyEvent, this, &Collection<ModelClass>::onModelDestroying);
             }
         }
 
@@ -366,14 +366,15 @@ namespace CMS {
     CMS::Collection<ModelClass>::~Collection(){
         ofNotifyEvent(collectionDestroyingEvent, *this, this);
 
+		// do this first!
+		stopSyncing();
+
         for(int i=0; i<_models.size(); i++){
             remove(_models[i]);
             // delete _models[i]; // destructing collections don't necessarily detroy their content
         }
 
-        //_models.clear();
-
-        stopSyncing();
+        _models.clear();
     }
 
     template <class ModelClass>
@@ -421,44 +422,41 @@ namespace CMS {
     }
 
     template <class ModelClass>
-    ModelClass* CMS::Collection<ModelClass>::remove(ModelClass *model, bool justRemove){
-        if(model == NULL) return NULL;
-
-//        // get specified model's index
-//        if(this->_models.size() > 900){
-//            ofLog() << "this is crazy: " << this->_models.size();
-//            return model;
-//        }
-//        ofLog() << "_models size: " << this->_models.size();
+    ModelClass* CMS::Collection<ModelClass>::remove(ModelClass *model, bool doDestroy){
+        if(model == NULL){
+			ofLogWarning() << "CMS::Collection::remove(ModelClass*, bool) - got NULL parameter";
+			return NULL;
+		}
 
         for(int i=0; i<this->_models.size(); i++){
             ModelClass* m = _models[i];
             if(m == model /*|| _models[i]->cid() == model->cid()*/){
-                return remove(i, justRemove);
+                return remove(i, doDestroy);
             }
         }
 
+		ofLogWarning() << "CMS::Collection::remove(ModelClass*, bool) - couldn't find model";
         return NULL;
     }
 
     template <class ModelClass>
-    ModelClass* CMS::Collection<ModelClass>::remove(int index, bool justRemove){
+    ModelClass* CMS::Collection<ModelClass>::remove(int index, bool doDestroy){
         ModelClass* model = at(index);
-        if(model == NULL) return NULL;
+
+        if(model == NULL){
+			ofLogWarning() << "CMS::Collection::remove(int, bool) - couldn't find model with index: " << index;
+			return NULL;
+		}
 
         registerModelCallbacks(model, false);
         _models.erase(_models.begin() + index);
-        
-        if(justRemove) return model;
-
-        // todo; this should probably happen even is justRemove == true
         ofNotifyEvent(modelRemovedEvent, *model, this);
 
-        if(bDestroyOnRemove){
+        if(doDestroy && bDestroyOnRemove){
             ofLog() << "Destroying removed model (id="+model->id()+", bDestroyOnRemove=true)";
             // destroy(model); // this will try to remove again, which isn't really a problem, just a bit inefficient
-            // delete model;
             model->destroy();
+			delete model;
             return NULL;
         }
 
@@ -467,23 +465,32 @@ namespace CMS {
 
     template <class ModelClass>
     void CMS::Collection<ModelClass>::destroy(ModelClass *model){
-        if(model == NULL) return;
-        remove(model, true /* just remove, no destroy */);
-        // delete model;
+        if(model == NULL){
+			ofLogWarning() << "CMS::Collection::destroy(ModelClass*) - got NULL parameter";
+			return;
+		}
+
+        remove(model, false /* just remove, no destroy */);
         model->destroy();
+		delete model;
     }
 
     template <class ModelClass>
     void CMS::Collection<ModelClass>::destroy(int idx){
-        ModelClass* m = remove(idx, true /* just remove no destroy */);
-        // delete m;
-        m->destroy();
+        ModelClass* m = remove(idx, false /* just remove no destroy */);
+
+		if(m){
+			m->destroy();
+			delete m;
+			return;
+		}
+
+		ofLogWarning() << "CMS::Collection::destroy(int) - couldn't find model";
     }
 
     template <class ModelClass>
     void CMS::Collection<ModelClass>::destroyAll(){
         for(int i=_models.size()-1; i>=0; i--){
-            // delete _models[i];
             destroy(i);
         }
     }
@@ -494,7 +501,7 @@ namespace CMS {
             remove(_models[i]);
         }
     }
-    
+   
     template <class ModelClass>
     const vector<ModelClass*> &CMS::Collection<ModelClass>::models(){
         return _models;
@@ -511,9 +518,19 @@ namespace CMS {
     
     template <class ModelClass>
     ModelClass* CMS::Collection<ModelClass>::at(unsigned int idx){
+		// if(idx < 0){ // this is impossible; idx is an UNSIGNED int
+		// 	ofLogWarning() << "CMS::Collection::at(unsigned int) - got negative index";
+		// 	return;
+		// }
+
+		if(idx >= _models.size()){
+			ofLogWarning() << "CMS::Collection::at(unsigned int) - got invalid index";
+			return NULL;
+		}
+
         return _models[idx];
     }
-    
+
     template <class ModelClass>
     ModelClass* CMS::Collection<ModelClass>::findByAttr(string attr, string value){
         for(int i=0; i<_models.size(); i++){
@@ -747,7 +764,7 @@ namespace CMS {
     // inherit from Model which has an ofEvent<Model> beforeDestroyEvent attribute which they all use...
     template <class ModelClass>
     void Collection<ModelClass>::onModelDestroying(Model& model){
-        remove((ModelClass*)&model, true /* just remove */);
+        remove((ModelClass*)&model, false /* just remove */);
     }
 
     // We have to use the Model& type here instead ModelClass& because all used Model types

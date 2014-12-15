@@ -71,7 +71,7 @@ string Model::id(){
 //// this was causing SIGABRT exceptions...
 void Model::destroy(bool notify){
    if(notify) ofNotifyEvent(beforeDestroyEvent, *this, this);
-   delete this;
+   // delete this; // this is causing issues (on windows) and one might consider "delete this" a bad paradigm...
 }
 
 // Convenience method with built-in support for MongoDB-style id format
