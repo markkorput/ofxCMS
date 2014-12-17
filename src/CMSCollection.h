@@ -18,6 +18,14 @@
 
 namespace CMS {
 
+    // The CMS::Model / CMS::Collection system is based on pointers,
+    // and data is parsed straight into existing models, so there should
+    // never be a situation when two different instances of the same model
+    // appear in memory, so in most cases you'll be find with using SAME_MODEL
+    // but to be thorough MODELS_MATCH could be used to check if the ids match instead (less strict)
+    #define SAME_MODEL(a,b) (a == b)
+    #define MODELS_MATCH(a,b) (a->id() == b->id())
+
     // Collection class that manages a collections of Models,
     // kinda based on the Backbone.js Collection
     template<class ModelClass>
@@ -81,7 +89,7 @@ namespace CMS {
         bool has(ModelClass* m){ return index(m) != INVALID_INDEX; }
         int index(ModelClass* m){
             for(int i=0; i<_models.size(); i++){
-                if(_models[i] == m)
+                if(MODELS_MATCH(_models[i], m))
                     return i;
             }
             
@@ -430,7 +438,13 @@ namespace CMS {
 
         for(int i=0; i<this->_models.size(); i++){
             ModelClass* m = _models[i];
-            if(m == model /*|| _models[i]->cid() == model->cid()*/){
+            
+            if(m == NULL){ // this should be impossible but has been ocurring during debugging
+                ofLogError() << "CMS::Collection::remove(ModelClass*, bool) - got impossible NULL from _models vector, local int i == " << i << ", _models.size() == " << _models.size();
+                continue;
+            }
+
+            if(MODELS_MATCH(m, model)){
                 return remove(i, doDestroy);
             }
         }
@@ -778,6 +792,14 @@ namespace CMS {
         // if one of our models changed and with the new changes no longer
         // passes our active filters; remove it
         if(!modelPassesActiveFilters((ModelClass*)args.model)){
+            // TODO; ofNotifyEvent?
+            remove((ModelClass*)args.model);
+        }
+
+        // if one of our models changed and with the new changes no longer
+        // passes our active rejections; remove it
+        if(!modelPassesActiveRejections((ModelClass*)args.model)){
+            // TODO; ofNotifyEvent?
             remove((ModelClass*)args.model);
         }
     }
@@ -785,17 +807,41 @@ namespace CMS {
     template <class ModelClass>
     void Collection<ModelClass>::onSyncSourceModelAdded(ModelClass &m){
         // if our sync source gets a new model, we follow...
+        // note that our add() function does apply all the active filters/rejections,
+        // so the model might not actually end up in our collection
         add(&m);
     }
 
     template <class ModelClass>
     void Collection<ModelClass>::onSyncSourceModelChanged(AttrChangeArgs &args){
-        // if our sync source's model isn't in our collection, but DOES pass our filters, add it
-        if(args.model == NULL) return;
-        if(this->findById(args.model->id()) != NULL) return; // already in our collection
-        if(modelPassesActiveFilters((ModelClass*)args.model)) add((ModelClass*)args.model);
+        if(args.model == NULL){
+            ofLogWarning() << "CMS::Collection::onSyncSourceModelChanged(AttrChangeArgs &) - got NULL model";
+            return;
+        }
+
+        //
+        // Use active filters and rejections to re-evaluate if the syncSource's model
+        // should or should not be in our collection after the change to its properties
+        //
+
+        // see if the model passes our active filter and rejection rules
+        bool pass = modelPassesActiveFilters((ModelClass*)args.model) && modelPassesActiveRejections((ModelClass*)args.model);
+
+        if(this->has((ModelClass*)args.model)){
+            // already in our collection;
+            // if after the change the model does NOT pass our filters; remove it
+            if(!pass)
+                remove((ModelClass*)args.model);
+
+            return;
+        }
+
+        // not yet in our collection?
+        // if after the change the model DOES pass our filters; add it
+        if(pass)
+            add((ModelClass*)args.model);
     }
-    
+
     template <class ModelClass>
     void Collection<ModelClass>::onSyncSourceDestroying(Collection<ModelClass> &syncSourceCollection){
         stopSyncing();
