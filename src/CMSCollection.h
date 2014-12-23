@@ -308,11 +308,12 @@ namespace CMS {
             if(_register){
                 ofAddListener(otherCollection.modelAddedEvent, this, &Collection<ModelClass>::onSyncSourceModelAdded);
                 ofAddListener(otherCollection.modelChangedEvent, this, &Collection<ModelClass>::onSyncSourceModelChanged);
-                // ofLogWarning() << "TODO: register onDestroy callback as well, to unregister when sync source destroys";
+                ofAddListener(otherCollection.modelRemovedEvent, this, &Collection<ModelClass>::onSyncSourceModelRemoved);
                 ofAddListener(otherCollection.collectionDestroyingEvent, this, &Collection<ModelClass>::onSyncSourceDestroying);
             } else {
                 ofRemoveListener(otherCollection.modelAddedEvent, this, &Collection<ModelClass>::onSyncSourceModelAdded);
                 ofRemoveListener(otherCollection.modelChangedEvent, this, &Collection<ModelClass>::onSyncSourceModelChanged);
+                ofRemoveListener(otherCollection.modelRemovedEvent, this, &Collection<ModelClass>::onSyncSourceModelRemoved);
                 ofRemoveListener(otherCollection.collectionDestroyingEvent, this, &Collection<ModelClass>::onSyncSourceDestroying);
             }
         }
@@ -335,6 +336,7 @@ namespace CMS {
         void onModelDestroying(Model& model);
         void onSyncSourceModelAdded(ModelClass &m);
         void onSyncSourceModelChanged(AttrChangeArgs &args);
+        void onSyncSourceModelRemoved(ModelClass &m);
         void onModelAttributeChanged(AttrChangeArgs &args);
         void onSyncSourceDestroying(Collection<ModelClass> &syncSourceCollection);
         
@@ -377,12 +379,8 @@ namespace CMS {
 		// do this first!
 		stopSyncing();
 
-        for(int i=0; i<_models.size(); i++){
-            remove(_models[i]);
-            // delete _models[i]; // destructing collections don't necessarily detroy their content
-        }
-
-        _models.clear();
+        clear();
+        _models.clear(); // just to be sure
     }
 
     template <class ModelClass>
@@ -779,6 +777,11 @@ namespace CMS {
     template <class ModelClass>
     void Collection<ModelClass>::onModelDestroying(Model& model){
         remove((ModelClass*)&model, false /* just remove */);
+    }
+
+    template <class ModelClass>
+    void Collection<ModelClass>::onSyncSourceModelRemoved(ModelClass &model){
+        remove(&model /*, false /* just remove, no destroy... right? A syncing collection should probably not destroy on remove anyway */);
     }
 
     // We have to use the Model& type here instead ModelClass& because all used Model types
