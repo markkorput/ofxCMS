@@ -53,6 +53,7 @@ namespace CMS {
     protected: // callbacks
         
         virtual void onSetAttribute(string attr, string value){}
+        virtual void onAttributeChanged(string attr, string value, string old_value){}
 
     protected:
 

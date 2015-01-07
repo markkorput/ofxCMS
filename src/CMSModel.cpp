@@ -36,6 +36,7 @@ Model* Model::set(string attr, string value, bool notify){
         args.model = this;
         args.attr = attr;
         args.value = value;
+        onAttributeChanged(attr, value, old_value);
         ofNotifyEvent(attributeChangedEvent, args, this);
     }
 

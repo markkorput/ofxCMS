@@ -781,7 +781,11 @@ namespace CMS {
 
     template <class ModelClass>
     void Collection<ModelClass>::onSyncSourceModelRemoved(ModelClass &model){
-        remove(&model /*, false /* just remove, no destroy... right? A syncing collection should probably not destroy on remove anyway */);
+        // we could just do `remove(&model);` here, but even though that model checks if the model exists in this collection,
+        // it kinda assumes it does and logs a warning message when this is not the case. Since it's very likely that a model
+        // that we receive in this callback function is NOT part of our collection, we perform this check here.
+        int idx = index(&model);
+        if(idx != INVALID_INDEX) remove(idx/*, false /* just remove, don't destroy? Syncing collections, probably shouldn't destroy on remove anyway... */);
     }
 
     // We have to use the Model& type here instead ModelClass& because all used Model types
