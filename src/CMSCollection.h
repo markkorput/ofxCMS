@@ -46,7 +46,7 @@ namespace CMS {
         ModelClass* remove(int index, bool doDestroy = true);
         void destroy(int index);
         void destroy(ModelClass *model);
-        void destroyBy(string key, string value);
+        void destroyBy(const string &key, const string &value);
         void clear();
         void destroyAll();
 
@@ -54,9 +54,9 @@ namespace CMS {
         unsigned int count(){ return _models.size(); }
 
         ModelClass* at(unsigned int idx);
-        ModelClass* findByAttr(string attr, string value);
-        ModelClass* findById(string _id);
-        ModelClass* byCid(string cid);
+        ModelClass* findByAttr(const string &attr, const string &value);
+        ModelClass* findById(const string &_id);
+        ModelClass* byCid(const string &cid);
         int randomIndex(){ return _models.size() == 0 ? -1 : floor(ofRandom(_models.size())); }
         ModelClass* random(){ return _models.size() == 0 ? NULL : at(randomIndex()); }
 
@@ -105,9 +105,9 @@ namespace CMS {
         }
     public: // parsing methods
 
-        bool parse(string jsonText, bool doRemove = true, bool doUpdate = true, bool doCreate = true);
+        bool parse(const string &jsonText, bool doRemove = true, bool doUpdate = true, bool doCreate = true);
         bool parse(const ofxJSONElement & node, bool doRemove = true, bool doUpdate = true, bool doCreate = true);
-        void parseModelJson(ModelClass *model, string jsonText);
+        void parseModelJson(ModelClass *model, const string &jsonText);
 
         // "merge" all models of another collection into our own collection.
         // for each model in the other collection, it will try to find an existing
@@ -144,14 +144,14 @@ namespace CMS {
     public: // filter methods
 
         // One-time filter: only keep models that have a specific key-value combination
-        void filterBy(string key, string val);
+        void filterBy(const string &key, const string &val);
 
         // One-time filter: only keep models with any of the specified values for a specific key
-        void filterBy(string key, vector<string> &values);
+        void filterBy(const string &key, vector<string> &values);
 
         // Active Filter: only keep models with a specific key-value combination
         // and also apply this filter when new models are added
-        void filtersBy(string attr, string value){
+        void filtersBy(const string &attr, const string &value){
             // apply filter on current collection
             filterBy(attr, value);
             // save filter to apply to newly added models
@@ -160,7 +160,7 @@ namespace CMS {
 
         // Active Filter: only keep models with any of the specified values for a specific key
         // and also apply this filter when new models are added
-        void filtersBy(string attr, vector<string> &values){
+        void filtersBy(const string &attr, vector<string> &values){
             // apply filter on current collection
             filterBy(attr, values);
             // save filter to apply to newly added models
@@ -168,7 +168,7 @@ namespace CMS {
         }
 
         // One-time filter: rejection only keep models that DO NOT have a specific key-value combination
-        void rejectBy(string key, string val){
+        void rejectBy(const string &key, const string &val){
             // we have to do this backwards! because every time you remove a model,
             // it messes with all the following index values
             for(int i=_models.size()-1; i>=0; i--){
@@ -180,7 +180,7 @@ namespace CMS {
         }
 
         // one-time multi-value rejection; all models who's attribute match any of the value are removed
-        void rejectBy(string key, vector<string> &values){
+        void rejectBy(const string &key, vector<string> &values){
             // we have to do this backwards! because every time you remove a model,
             // it messes with all the following index values
             for(int i=_models.size()-1; i>=0; i--){
@@ -193,7 +193,7 @@ namespace CMS {
 
         // Active Filter: only keep models without a specific key-value combination
         // and also apply this filter when new models are added
-        void rejectsBy(string attr, string value){
+        void rejectsBy(const string &attr, const string &value){
             // apply filter on current collection
             rejectBy(attr, value);
             // save filter to apply to newly added models
@@ -202,7 +202,7 @@ namespace CMS {
 
         // Active Filter: only keep models without any of the specified values for a specific key
         // and also apply this filter when new models are added
-        void rejectsBy(string attr, vector<string> &values){
+        void rejectsBy(const string &attr, vector<string> &values){
             // apply filter on current collection
             rejectBy(attr, values);
             // save filter to apply to newly added models
@@ -222,7 +222,7 @@ namespace CMS {
             }
         }
 
-        void removeFilter(string attr, bool resync = true){
+        void removeFilter(const string &attr, bool resync = true){
             filterValues.erase(attr);
             filterVectors.erase(attr);
             rejectValues.erase(attr);
@@ -255,7 +255,7 @@ namespace CMS {
             return true;
         }
 
-        bool modelPassesMultiValueFilter(ModelClass *model, string attr, vector<string> &values){
+        bool modelPassesMultiValueFilter(ModelClass *model, const string &attr, vector<string> &values){
             for(int i=0; i<values.size(); i++){
                 // passes if it has one of the specified values
                 if(model->get(attr) == values[i]) return true;
@@ -264,7 +264,7 @@ namespace CMS {
             return false;
         }
         
-        bool modelPassesSingleValueFilter(ModelClass *model, string attr, string value){
+        bool modelPassesSingleValueFilter(ModelClass *model, const string &attr, const string &value){
             return model->get(attr) == value;
         }
 
@@ -286,7 +286,7 @@ namespace CMS {
             return true;
         }
 
-        bool modelPassesMultiValueRejection(ModelClass *model, string attr, vector<string> &values){
+        bool modelPassesMultiValueRejection(ModelClass *model, const string &attr, vector<string> &values){
             for(int i=0; i<values.size(); i++){
                 // passes if it has one of the specified values
                 if(model->get(attr) == values[i]) return false;
@@ -295,13 +295,13 @@ namespace CMS {
             return true;
         }
 
-        bool modelPassesSingleValueRejection(ModelClass *model, string attr, string value){
+        bool modelPassesSingleValueRejection(ModelClass *model, const string &attr, string value){
             return model->get(attr) != value;
         }
         
     protected: // methods
 
-        int indexByCid(string cid);
+        int indexByCid(const string &cid);
         string parseModelJsonValue(Json::Value &value);
 
         void registerSyncCallbacks(Collection<ModelClass> &otherCollection, bool _register = true){
@@ -520,7 +520,7 @@ namespace CMS {
     }
     
     template <class ModelClass>
-    int CMS::Collection<ModelClass>::indexByCid(string cid){
+    int CMS::Collection<ModelClass>::indexByCid(const string &cid){
         for(int i=0; i<_models.size(); i++){
             if(_models[i]->cid() == cid)
                 return i;
@@ -544,7 +544,7 @@ namespace CMS {
     }
 
     template <class ModelClass>
-    ModelClass* CMS::Collection<ModelClass>::findByAttr(string attr, string value){
+    ModelClass* CMS::Collection<ModelClass>::findByAttr(const string &attr, const string &value){
         for(int i=0; i<_models.size(); i++){
             if(_models[i]->get(attr) == value)
                 return _models[i];
@@ -554,7 +554,7 @@ namespace CMS {
     }
 
     template <class ModelClass>
-    ModelClass* CMS::Collection<ModelClass>::findById(string _id){
+    ModelClass* CMS::Collection<ModelClass>::findById(const string &_id){
         for(int i=0; i<_models.size(); i++){
             if(_models[i]->id() == _id)
                 return _models[i];
@@ -564,13 +564,13 @@ namespace CMS {
     }
 
     template <class ModelClass>
-    ModelClass* CMS::Collection<ModelClass>::byCid(string _cid){
+    ModelClass* CMS::Collection<ModelClass>::byCid(const string &_cid){
         int idx = indexByCid(_cid);
         return idx == -1 ? NULL : _models[idx];
     }
 
     template <class ModelClass>
-    void CMS::Collection<ModelClass>::filterBy(string key, string val){
+    void CMS::Collection<ModelClass>::filterBy(const string &key, const string &val){
         // we have to do this backwards! because every time you remove a model,
         // it messes with all the following index values
         for(int i=_models.size()-1; i>=0; i--){
@@ -582,7 +582,7 @@ namespace CMS {
     }
 
     template <class ModelClass>
-    void CMS::Collection<ModelClass>::filterBy(string key, vector<string> &values){
+    void CMS::Collection<ModelClass>::filterBy(const string &key, vector<string> &values){
         // we have to do this backwards! because every time you remove a model,
         // it messes with all the following index values
         for(int i=_models.size()-1; i>=0; i--){
@@ -594,7 +594,7 @@ namespace CMS {
     }
 
     template <class ModelClass>
-    void CMS::Collection<ModelClass>::destroyBy(string key, string value){
+    void CMS::Collection<ModelClass>::destroyBy(const string &key, const string &value){
         // we have to do this backwards! because every time you remove a model,
         // it messes with all the following index values
         for(int i=_models.size()-1; i>=0; i--){
@@ -606,7 +606,7 @@ namespace CMS {
     }
 
     template <class ModelClass>
-    bool Collection<ModelClass>::parse(string jsonText, bool doRemove, bool doUpdate, bool doCreate){
+    bool Collection<ModelClass>::parse(const string &jsonText, bool doRemove, bool doUpdate, bool doCreate){
         ofxJSONElement json;
 
         // try to parse json, abort if it fails
@@ -691,7 +691,7 @@ namespace CMS {
     }
 
     template <class ModelClass>
-    void Collection<ModelClass>::parseModelJson(ModelClass *model, string jsonText){
+    void Collection<ModelClass>::parseModelJson(ModelClass *model, const string &jsonText){
         ofxJSONElement doc;
 
         if(!doc.parse(jsonText)){

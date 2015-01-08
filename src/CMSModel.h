@@ -31,9 +31,9 @@ namespace CMS {
         Model();
         // ~Model();
 
-        Model* set(string attr, string value, bool notify = true);
+        Model* set(const string &attr, const string &value, bool notify = true);
         Model* set(map<string, string> &attrs);
-        string get(string attr, string _default = "");
+        string get(const string &attr, string _default = "");
         string id();
         string cid();
         map<string, string> &attributes(){ return _attributes; }
@@ -52,8 +52,8 @@ namespace CMS {
 
     protected: // callbacks
         
-        virtual void onSetAttribute(string attr, string value){}
-        virtual void onAttributeChanged(string attr, string value, string old_value){}
+        virtual void onSetAttribute(const string &attr, const string &value){}
+        virtual void onAttributeChanged(const string &attr, const string &value, const string &old_value){}
 
     protected:
 

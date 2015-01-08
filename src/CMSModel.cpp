@@ -25,7 +25,7 @@ Model::Model(){
 //     ofNotifyEvent(beforeDestroyEvent, *this, this);
 // }
 
-Model* Model::set(string attr, string value, bool notify){
+Model* Model::set(const string &attr, const string &value, bool notify){
     string old_value = _attributes[attr];
 
     _attributes[attr] = value;
@@ -54,7 +54,7 @@ Model* Model::set(map<string, string> &attrs){
 	return this;
 }
 
-string Model::get(string attr, string _default){
+string Model::get(const string &attr, string _default){
     return (_attributes.find(attr) == _attributes.end()) ? _default : _attributes[attr];
 }
 
