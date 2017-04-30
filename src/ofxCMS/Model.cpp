@@ -9,17 +9,12 @@
 #include "Model.h"
 #include "ofxJSONElement.h"
 
-#define INVALID_CID (-1)
-
 using namespace ofxCMS;
 
-Model::Model(){
-    mCid = "";
-}
+const int Model::INVALID_CID = -1;
 
-// Model::~Model(){
-//     ofNotifyEvent(beforeDestroyEvent, *this, this);
-// }
+Model::Model() : mId(""), mCid(INVALID_CID){
+}
 
 Model* Model::set(const string &attr, const string &value, bool notify){
     string old_value = _attributes[attr];
@@ -52,25 +47,8 @@ Model* Model::set(map<string, string> &attrs, bool notify){
 	return this;
 }
 
-string Model::get(const string &attr, string _default){
-    return (_attributes.find(attr) == _attributes.end()) ? _default : _attributes[attr];
-}
-
-string Model::cid(){
-    return mCid;
-}
-
-string Model::id(){
-    // look for an "id" attribute, if that's not present,
-    // look for an "_id" attribute (mongoDB style), if that's not present,
-    // grab the cid()
-    return get("id", get("_id", cid()));
-}
-
-//// this was causing SIGABRT exceptions...
-void Model::destroy(bool notify){
-   if(notify) ofNotifyEvent(beforeDestroyEvent, *this, this);
-   // delete this; // this is causing issues (on windows) and one might consider "delete this" a bad paradigm...
+string Model::get(const string &attr, string _default) const {
+    return (_attributes.find(attr) == _attributes.end()) ? _default : _attributes.at(attr);
 }
 
 // Convenience method with built-in support for MongoDB-style id format

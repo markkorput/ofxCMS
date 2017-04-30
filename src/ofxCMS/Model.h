@@ -15,6 +15,8 @@ namespace ofxCMS {
 
     class Model;
 
+
+
     // used in attributeChangeEvent notifications
     class AttrChangeArgs {
     public:
@@ -28,18 +30,20 @@ namespace ofxCMS {
     class Model{
 
     public:
+        static const int INVALID_CID;
         Model();
-        // ~Model();
 
-        void setId(const string& newId){ mCid = newId; }
         Model* set(const string &attr, const string &value, bool notify = true);
         Model* set(map<string, string> &attrs, bool notify=true);
-        string get(const string &attr, string _default = "");
-        string id();
-        string cid();
-        map<string, string> &attributes(){ return _attributes; }
+        string get(const string &attr, string _default = "") const;
 
-        void destroy(bool notify = true);
+        string id() const { return get("id", get("_id", getId())); }
+        string getId() const { return mId; }
+        void setCid(int newCid){ mCid = newCid; }
+        int cid() const { return mCid; }
+        int getCid() const { return mCid; }
+
+        map<string, string> &attributes(){ return _attributes; }
 
     public: // static helpers
 
@@ -49,20 +53,21 @@ namespace ofxCMS {
     public: // events
 
         LambdaEvent<AttrChangeArgs> attributeChangedEvent;
-        ofEvent <Model> beforeDestroyEvent;
 
     protected: // callbacks
 
         virtual void onSetAttribute(const string &attr, const string &value){}
         virtual void onAttributeChanged(const string &attr, const string &value, const string &old_value){}
 
-    protected:
+    private:
 
         map<string, string> _attributes;
 
-        // CID stuff (client-id, local/internal ids,
-        // mainly to identify unpersisted models)
-        string mCid;
+        // id; for identifying models across different platforms
+        string mId;
+
+        // cid (client-id, for local/internal use)
+        int mCid;
 
     }; // class Model
 

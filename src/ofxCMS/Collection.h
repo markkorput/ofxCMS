@@ -331,10 +331,10 @@ namespace ofxCMS {
 
         ofEvent <void> collectionInitializedEvent;
         ofEvent < Collection<ModelClass> > collectionDestroyingEvent;
-        ofEvent <ModelClass> modelAddedEvent;
+        LambdaEvent<ModelClass> modelAddedEvent;
         ofEvent <ModelClass> modelRemovedEvent;
         ofEvent <ModelClass> modelRejectedEvent;
-        LambdaEvent <AttrChangeArgs> modelChangedEvent;
+        LambdaEvent<AttrChangeArgs> modelChangedEvent;
         ofEvent < Collection<ModelClass> > fifoEvent;
 
     protected: // attributes
@@ -382,9 +382,10 @@ void ofxCMS::Collection<ModelClass>::initialize(vector< map<string, string> > &_
 
 template <class ModelClass>
 shared_ptr<ModelClass> ofxCMS::Collection<ModelClass>::create(){
+    // create instance with auto-incremented ID
     auto ref = make_shared<ModelClass>();
-    ref->setId(ofToString(mNextId));
-    mNextId++;
+    // add to our collection and return
+    add(ref.get());
     return ref;
 }
 
@@ -392,6 +393,14 @@ template <class ModelClass>
 bool ofxCMS::Collection<ModelClass>::add(ModelClass *model, bool notify){
     // What the hell are we supposed to do with this??
     if(model == NULL) return false;
+
+    if(model->cid() == ModelClass::INVALID_CID){
+        ofLogNotice("ofxCMS.Collection.add") << "nextId: " << mNextId;
+        model->setCid(mNextId);
+        mNextId++;
+    } else if(model->cid() >= mNextId){
+        mNextId = model->cid() + 1;
+    }
 
     // apply active filters
     if(!modelPassesActiveFilters(model) || !modelPassesActiveRejections(model)){
@@ -510,7 +519,7 @@ ModelClass* ofxCMS::Collection<ModelClass>::remove(int index, bool doDestroy){
     if(doDestroy && bDestroyOnRemove){
         ofLogNotice("ofxCMS.Collection.remove") << "destroying removed model with id: " << model->id();
         // destroy(model); // this will try to remove again, which isn't really a problem, just a bit inefficient
-        model->destroy();
+        // model->destroy();
 		delete model;
         return NULL;
     }
@@ -526,7 +535,7 @@ void ofxCMS::Collection<ModelClass>::destroy(ModelClass *model){
 	}
 
     remove(model, false /* just remove, no destroy */);
-    model->destroy();
+    // model->destroy();
 	delete model;
 }
 
@@ -535,7 +544,7 @@ void ofxCMS::Collection<ModelClass>::destroy(int idx){
     ModelClass* m = remove(idx, false /* just remove no destroy */);
 
 	if(m){
-		m->destroy();
+		//m->destroy();
 		delete m;
 		return;
 	}

@@ -11,32 +11,64 @@ using namespace ofxCMS;
 class ofApp: public ofxUnitTestsApp{
 
     void run(){
-        // create collection and first instance
+        // create collection
         shared_ptr<ofxCMS::Collection<ofxCMS::Model>> collectionRef = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+
+        collectionRef->modelAddedEvent.addListener([](ofxCMS::Model& model){
+            model.set("foo", "barr52");
+        }, this);
+
+        // create first model
+        test_eq(collectionRef->count(), 0, "");
         shared_ptr<ofxCMS::Model> modelRef = collectionRef->create();
+        test_eq(collectionRef->count(), 1, "");
+        test_eq(modelRef->get("foo"), "barr52", "");
+
+        collectionRef->modelAddedEvent.removeListeners(this);
+
         // default first id
-        test_eq(modelRef->id(), "1", "");
+        test_eq(modelRef->cid(), 1, "");
         // get non existing attribute
         test_eq(modelRef->get("name"), "", "");
         // get non existing attribute with default value
         test_eq(modelRef->get("name", "John Doe"), "John Doe", "");
 
-
         // changing attribute should trigger callbacks
         modelRef->attributeChangedEvent.addListener([](ofxCMS::AttrChangeArgs& args) -> void {
-            args.model->set(args.attr, args.value + " (Model Callback OK)", false /* dony notify */);
+            args.model->set(args.attr, args.model->get(args.attr) + " (Model Callback OK)", false /* dony notify */);
         }, this);
+
         collectionRef->modelChangedEvent += [](ofxCMS::AttrChangeArgs& args) -> void {
-            args.model->set(args.attr, args.value + " (Collection Callback OK)", false /* dony notify */);
+            args.model->set(args.attr, args.model->get(args.attr) + " (Collection Callback OK)", false /* dony notify */);
         };
         // set name and trigger callback(s)
         modelRef->set("name", "Brian Fury");
-        test_eq(modelRef->get("name"), "Brian Fury (Model Callback OK) (Collection callback OK)", "");
+        test_eq(modelRef->get("name"), "Brian Fury (Model Callback OK) (Collection Callback OK)", "");
 
 
-        TEST_START(Adding existing model might need modify nextId)
-            ofLog() << "TODO";
-        TEST_END
+        // add an existing external model without cid; gets assign a cid
+        {
+            ofxCMS::Model* m = new ofxCMS::Model();
+            collectionRef->add(m);
+            test_eq(collectionRef->count(), 2, "");
+            test_eq(m->cid(), 2, "");
+        }
+
+        // add an existing external model without cid; gets assign a cid
+        {
+            ofxCMS::Model* m = new ofxCMS::Model();
+            m->setCid(8);
+            collectionRef->add(m);
+            test_eq(collectionRef->count(), 3, "");
+            test_eq(m->cid(), 8, "");
+        }
+
+        // add another model; gets the next cid (following the previous model's cid)
+        {
+            shared_ptr<ofxCMS::Model> m = collectionRef->create();
+            test_eq(collectionRef->count(), 4, "");
+            test_eq(m->cid(), 9, "");
+        }
     }
 };
 
