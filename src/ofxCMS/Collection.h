@@ -55,10 +55,11 @@ namespace ofxCMS {
         unsigned int count(){ return _models.size(); }
 
         ModelClass* at(unsigned int idx);
+        ModelClass* find(int cid){ return findByCid(cid); }
         ModelClass* findByAttr(const string &attr, const string &value);
         ModelClass* findById(const string &_id);
-        ModelClass* byCid(const string &cid);
-        int randomIndex(){ return _models.size() == 0 ? -1 : floor(ofRandom(_models.size())); }
+        ModelClass* findByCid(int cid);
+        int randomIndex(){ return _models.size() == 0 ? INVALID_INDEX : floor(ofRandom(_models.size())); }
         ModelClass* random(){ return _models.size() == 0 ? NULL : at(randomIndex()); }
 
         ModelClass* previous(ModelClass* model);
@@ -302,7 +303,7 @@ namespace ofxCMS {
 
     protected: // methods
 
-        int indexByCid(const string &cid);
+        int indexOfCid(int cid);
         string parseModelJsonValue(Json::Value &value);
 
         void registerSyncCallbacks(Collection<ModelClass> &otherCollection, bool _register = true){
@@ -572,12 +573,12 @@ const vector<ModelClass*>& ofxCMS::Collection<ModelClass>::models(){
 }
 
 template <class ModelClass>
-int ofxCMS::Collection<ModelClass>::indexByCid(const string &cid){
+int ofxCMS::Collection<ModelClass>::indexOfCid(int cid){
     for(int i=0; i<_models.size(); i++){
         if(_models[i]->cid() == cid)
             return i;
     }
-    return -1;
+    return INVALID_INDEX;
 }
 
 template <class ModelClass>
@@ -616,9 +617,9 @@ ModelClass* ofxCMS::Collection<ModelClass>::findById(const string &_id){
 }
 
 template <class ModelClass>
-ModelClass* ofxCMS::Collection<ModelClass>::byCid(const string &_cid){
-    int idx = indexByCid(_cid);
-    return idx == -1 ? NULL : _models[idx];
+ModelClass* ofxCMS::Collection<ModelClass>::findByCid(int cid){
+    int idx = indexOfCid(cid);
+    return idx == INVALID_INDEX ? NULL : _models[idx];
 }
 
 template <class ModelClass>
@@ -782,15 +783,15 @@ string ofxCMS::Collection<ModelClass>::parseModelJsonValue(Json::Value &value){
 
 template <class ModelClass>
 ModelClass* ofxCMS::Collection<ModelClass>::previous(ModelClass* model){
-    int idx = indexByCid(model->cid());
-    if(idx == -1) return NULL;
+    int idx = indexOfCid(model->cid());
+    if(idx == INVALID_INDEX) return NULL;
     return at((idx-1) % models().size());
 }
 
 template <class ModelClass>
 ModelClass* ofxCMS::Collection<ModelClass>::next(ModelClass* model){
-    int idx = indexByCid(model->cid());
-    if(idx == -1) return NULL;
+    int idx = indexOfCid(model->cid());
+    if(idx == INVALID_INDEX) return NULL;
     return at((idx+1) % models().size());
 }
 

@@ -69,6 +69,23 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(collectionRef->count(), 4, "");
             test_eq(m->cid(), 9, "");
         }
+
+        // find and remove
+        auto m = collectionRef->find(8);
+        ofLog() << "TODO: test shared_ptr ref count";
+        auto m2 = collectionRef->remove(m);
+        test_eq(m, m2, "");
+        ofLog() << "TODO: test shared_ptr ref count";
+        test_eq(collectionRef->count(), 3, "");
+        auto m3 = collectionRef->remove(3);
+        test_eq((m3 == nullptr), true, "");
+        test_eq(collectionRef->count(), 3, "");
+        m3 = collectionRef->remove(2);
+        test_eq((m3 == nullptr), false, "");
+        test_eq(collectionRef->count(), 2, "");
+        test_eq(m3->cid(), 9, "");
+        ofLog() << "TODO: test shared_ptr ref count";
+
     }
 };
 
