@@ -1,4 +1,3 @@
 ofxUnitTests
-ofxLiquidEvent
-ofxCRUD
-ofxOsc
+ofxCMS
+ofxJSON

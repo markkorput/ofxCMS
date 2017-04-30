@@ -98,7 +98,7 @@ vector<string> Model::jsonArrayToStringVector(string jsonText){
     // loop over each value in json array and add it to our ids vector
     for(int i=0; i<json.size(); i++){
         // mongoDB-style id
-        if(json[i].isObject() && json[i]["$oid"] != NULL && json[i]["$oid"].isString()){
+        if(json[i].isObject() && !json[i]["$oid"].isNull() && json[i]["$oid"].isString()){
             ids.push_back(json[i]["$oid"].asString());
             // simple string id
         } else if(json[i].isString()){

@@ -11,13 +11,13 @@
 #include "ofMain.h"
 #include "ofxJSONElement.h"
 
-// Even though CMS::Collection is a template class,
+// Even though ofxCMS::Collection is a template class,
 // it does assume that any used model-type inherits from CMS::Model
 #include "Model.h"
 
 namespace ofxCMS {
 
-    // The CMS::Model / CMS::Collection system is based on pointers,
+    // The CMS::Model / ofxCMS::Collection system is based on pointers,
     // and data is parsed straight into existing models, so there should
     // never be a situation when two different instances of the same model
     // appear in memory, so in most cases you'll be find with using SAME_MODEL
@@ -366,491 +366,489 @@ namespace ofxCMS {
         bool bDestroyOnRemove;
 
     }; // class Collection
+} // namespace ofxCMS
+
+// TEMPLATE CLASS IMPLEMENTATION (there's no .cpp files) //
 
 
-    // TEMPLATE CLASS IMPLEMENTATION (there's no .cpp files) //
+template <class ModelClass>
+ofxCMS::Collection<ModelClass>::~Collection(){
+    ofNotifyEvent(collectionDestroyingEvent, *this, this);
 
+	// do this first!
+	stopSyncing();
 
-    template <class ModelClass>
-    CMS::Collection<ModelClass>::~Collection(){
-        ofNotifyEvent(collectionDestroyingEvent, *this, this);
+    clear();
+    _models.clear(); // just to be sure
+}
 
-		// do this first!
-		stopSyncing();
+template <class ModelClass>
+void ofxCMS::Collection<ModelClass>::initialize(vector< map<string, string> > &_data){
+    for(int i=0; i<_data.size(); i++){
+        // create a cloned copy of each model and add them without triggering modelAdded events
+        add(new ModelClass(&_data[i]), false);
+    }
+    ofNotifyEvent(collectionInitializedEvent, this);
+}
 
-        clear();
-        _models.clear(); // just to be sure
+template <class ModelClass>
+bool ofxCMS::Collection<ModelClass>::add(ModelClass *model, bool notify){
+    // What the hell are we supposed to do with this??
+    if(model == NULL) return false;
+
+    // apply active filters
+    if(!modelPassesActiveFilters(model) || !modelPassesActiveRejections(model)){
+        ofNotifyEvent(modelRejectedEvent, *model, this);
+        return false;
     }
 
-    template <class ModelClass>
-    void CMS::Collection<ModelClass>::initialize(vector< map<string, string> > &_data){
-        for(int i=0; i<_data.size(); i++){
-            // create a cloned copy of each model and add them without triggering modelAdded events
-            add(new ModelClass(&_data[i]), false);
-        }
-        ofNotifyEvent(collectionInitializedEvent, this);
-    }
-
-    template <class ModelClass>
-    bool CMS::Collection<ModelClass>::add(ModelClass *model, bool notify){
-        // What the hell are we supposed to do with this??
-        if(model == NULL) return false;
-
-        // apply active filters
-        if(!modelPassesActiveFilters(model) || !modelPassesActiveRejections(model)){
-            ofNotifyEvent(modelRejectedEvent, *model, this);
+    // reached our limit, either remove first model, or reject this new model
+    if(limitReached()){
+        if(bFIFO){
+            ofLog() << "Collection limit ("+ofToString(mLimit)+") reached, removing first model (FIFO)";
+            ofNotifyEvent(fifoEvent, *this, this);
+            remove(0);
+        } else {
+            ofLog() << "Collection limit ("+ofToString(mLimit)+") reached, can't add model (NO FIFO)";
             return false;
         }
-
-        // reached our limit, either remove first model, or reject this new model
-        if(limitReached()){
-            if(bFIFO){
-                ofLog() << "Collection limit ("+ofToString(mLimit)+") reached, removing first model (FIFO)";
-                ofNotifyEvent(fifoEvent, *this, this);
-                remove(0);
-            } else {
-                ofLog() << "Collection limit ("+ofToString(mLimit)+") reached, can't add model (NO FIFO)";
-                return false;
-            }
-        }
-
-        // add to our collection
-        _models.push_back(model);
-
-        registerModelCallbacks(model);
-
-        // let's tell the world
-        if(notify) ofNotifyEvent(modelAddedEvent, *model, this);
-
-        // success!
-        return true;
     }
 
-    template <class ModelClass>
-    ModelClass* CMS::Collection<ModelClass>::remove(ModelClass *model, bool doDestroy){
-        if(model == NULL){
-			ofLogWarning() << "CMS::Collection::remove(ModelClass*, bool) - got NULL parameter";
-			return NULL;
-		}
+    // add to our collection
+    _models.push_back(model);
 
-        for(int i=0; i<this->_models.size(); i++){
-            ModelClass* m = _models[i];
+    registerModelCallbacks(model);
 
-            if(m == NULL){ // this should be impossible but has been ocurring during debugging
-                ofLogError() << "CMS::Collection::remove(ModelClass*, bool) - got impossible NULL from _models vector, local int i == " << i << ", _models.size() == " << _models.size();
-                continue;
-            }
+    // let's tell the world
+    if(notify) ofNotifyEvent(modelAddedEvent, *model, this);
 
-            if(MODELS_MATCH(m, model)){
-                return remove(i, doDestroy);
-            }
+    // success!
+    return true;
+}
+
+template <class ModelClass>
+ModelClass* ofxCMS::Collection<ModelClass>::remove(ModelClass *model, bool doDestroy){
+    if(model == NULL){
+		ofLogWarning("ofxCMS.Collection.remove") << "got NULL parameter";
+		return NULL;
+	}
+
+    for(int i=0; i<this->_models.size(); i++){
+        ModelClass* m = _models[i];
+
+        if(m == NULL){ // this should be impossible but has been ocurring during debugging
+            ofLogError("ofxCMS.Collection.remove") << "got impossible NULL from _models vector, local int i == " << i << ", _models.size() == " << _models.size();
+            continue;
         }
 
-		ofLogWarning() << "CMS::Collection::remove(ModelClass*, bool) - couldn't find model";
-        return NULL;
-    }
-
-    template <class ModelClass>
-    ModelClass* CMS::Collection<ModelClass>::remove(int index, bool doDestroy){
-        ModelClass* model = at(index);
-
-        if(model == NULL){
-			ofLogWarning() << "CMS::Collection::remove(int, bool) - couldn't find model with index: " << index;
-			return NULL;
-		}
-
-        registerModelCallbacks(model, false);
-        _models.erase(_models.begin() + index);
-        ofNotifyEvent(modelRemovedEvent, *model, this);
-
-        if(doDestroy && bDestroyOnRemove){
-            ofLog() << "Destroying removed model (id="+model->id()+", bDestroyOnRemove=true)";
-            // destroy(model); // this will try to remove again, which isn't really a problem, just a bit inefficient
-            model->destroy();
-			delete model;
-            return NULL;
+        if(MODELS_MATCH(m, model)){
+            return remove(i, doDestroy);
         }
-
-        return model;
     }
 
-    template <class ModelClass>
-    void CMS::Collection<ModelClass>::destroy(ModelClass *model){
-        if(model == NULL){
-			ofLogWarning() << "CMS::Collection::destroy(ModelClass*) - got NULL parameter";
-			return;
-		}
+	ofLogWarning("ofxCMS.Collection.remove") << "couldn't find model";
+    return NULL;
+}
 
-        remove(model, false /* just remove, no destroy */);
+template <class ModelClass>
+ModelClass* ofxCMS::Collection<ModelClass>::remove(int index, bool doDestroy){
+    ModelClass* model = at(index);
+
+    if(model == NULL){
+		ofLogWarning("ofxCMS.Collection.remove") << "couldn't find model with index: " << index;
+		return NULL;
+	}
+
+    registerModelCallbacks(model, false);
+    _models.erase(_models.begin() + index);
+    ofNotifyEvent(modelRemovedEvent, *model, this);
+
+    if(doDestroy && bDestroyOnRemove){
+        ofLogNotice("ofxCMS.Collection.remove") << "destroying removed model with id: " << model->id();
+        // destroy(model); // this will try to remove again, which isn't really a problem, just a bit inefficient
         model->destroy();
 		delete model;
-    }
-
-    template <class ModelClass>
-    void CMS::Collection<ModelClass>::destroy(int idx){
-        ModelClass* m = remove(idx, false /* just remove no destroy */);
-
-		if(m){
-			m->destroy();
-			delete m;
-			return;
-		}
-
-		ofLogWarning() << "CMS::Collection::destroy(int) - couldn't find model";
-    }
-
-    template <class ModelClass>
-    void CMS::Collection<ModelClass>::destroyAll(){
-        for(int i=_models.size()-1; i>=0; i--){
-            destroy(i);
-        }
-    }
-
-    template <class ModelClass>
-    void CMS::Collection<ModelClass>::clear(){
-        for(int i=_models.size()-1; i>=0; i--){
-            remove(_models[i]);
-        }
-    }
-
-    template <class ModelClass>
-    const vector<ModelClass*> &CMS::Collection<ModelClass>::models(){
-        return _models;
-    }
-
-    template <class ModelClass>
-    int CMS::Collection<ModelClass>::indexByCid(const string &cid){
-        for(int i=0; i<_models.size(); i++){
-            if(_models[i]->cid() == cid)
-                return i;
-        }
-        return -1;
-    }
-
-    template <class ModelClass>
-    ModelClass* CMS::Collection<ModelClass>::at(unsigned int idx){
-		// if(idx < 0){ // this is impossible; idx is an UNSIGNED int
-		// 	ofLogWarning() << "CMS::Collection::at(unsigned int) - got negative index";
-		// 	return;
-		// }
-
-		if(idx >= _models.size()){
-			ofLogWarning() << "CMS::Collection::at(unsigned int) - got invalid index";
-			return NULL;
-		}
-
-        return _models[idx];
-    }
-
-    template <class ModelClass>
-    ModelClass* CMS::Collection<ModelClass>::findByAttr(const string &attr, const string &value){
-        for(int i=0; i<_models.size(); i++){
-            if(_models[i]->get(attr) == value)
-                return _models[i];
-        }
-
         return NULL;
     }
 
-    template <class ModelClass>
-    ModelClass* CMS::Collection<ModelClass>::findById(const string &_id){
-        for(int i=0; i<_models.size(); i++){
-            if(_models[i]->id() == _id)
-                return _models[i];
-        }
+    return model;
+}
 
-        return NULL;
+template <class ModelClass>
+void ofxCMS::Collection<ModelClass>::destroy(ModelClass *model){
+    if(model == NULL){
+		ofLogWarning() << "ofxCMS::Collection::destroy(ModelClass*) - got NULL parameter";
+		return;
+	}
+
+    remove(model, false /* just remove, no destroy */);
+    model->destroy();
+	delete model;
+}
+
+template <class ModelClass>
+void ofxCMS::Collection<ModelClass>::destroy(int idx){
+    ModelClass* m = remove(idx, false /* just remove no destroy */);
+
+	if(m){
+		m->destroy();
+		delete m;
+		return;
+	}
+
+	ofLogWarning() << "ofxCMS::Collection::destroy(int) - couldn't find model";
+}
+
+template <class ModelClass>
+void ofxCMS::Collection<ModelClass>::destroyAll(){
+    for(int i=_models.size()-1; i>=0; i--){
+        destroy(i);
+    }
+}
+
+template <class ModelClass>
+void ofxCMS::Collection<ModelClass>::clear(){
+    for(int i=_models.size()-1; i>=0; i--){
+        remove(_models[i]);
+    }
+}
+
+template <class ModelClass>
+const vector<ModelClass*>& ofxCMS::Collection<ModelClass>::models(){
+    return _models;
+}
+
+template <class ModelClass>
+int ofxCMS::Collection<ModelClass>::indexByCid(const string &cid){
+    for(int i=0; i<_models.size(); i++){
+        if(_models[i]->cid() == cid)
+            return i;
+    }
+    return -1;
+}
+
+template <class ModelClass>
+ModelClass* ofxCMS::Collection<ModelClass>::at(unsigned int idx){
+	// if(idx < 0){ // this is impossible; idx is an UNSIGNED int
+	// 	ofLogWarning() << "ofxCMS::Collection::at(unsigned int) - got negative index";
+	// 	return;
+	// }
+
+	if(idx >= _models.size()){
+		ofLogWarning() << "ofxCMS::Collection::at(unsigned int) - got invalid index";
+		return NULL;
+	}
+
+    return _models[idx];
+}
+
+template <class ModelClass>
+ModelClass* ofxCMS::Collection<ModelClass>::findByAttr(const string &attr, const string &value){
+    for(int i=0; i<_models.size(); i++){
+        if(_models[i]->get(attr) == value)
+            return _models[i];
     }
 
-    template <class ModelClass>
-    ModelClass* CMS::Collection<ModelClass>::byCid(const string &_cid){
-        int idx = indexByCid(_cid);
-        return idx == -1 ? NULL : _models[idx];
+    return NULL;
+}
+
+template <class ModelClass>
+ModelClass* ofxCMS::Collection<ModelClass>::findById(const string &_id){
+    for(int i=0; i<_models.size(); i++){
+        if(_models[i]->id() == _id)
+            return _models[i];
     }
 
-    template <class ModelClass>
-    void CMS::Collection<ModelClass>::filterBy(const string &key, const string &val){
-        // we have to do this backwards! because every time you remove a model,
-        // it messes with all the following index values
+    return NULL;
+}
+
+template <class ModelClass>
+ModelClass* ofxCMS::Collection<ModelClass>::byCid(const string &_cid){
+    int idx = indexByCid(_cid);
+    return idx == -1 ? NULL : _models[idx];
+}
+
+template <class ModelClass>
+void ofxCMS::Collection<ModelClass>::filterBy(const string &key, const string &val){
+    // we have to do this backwards! because every time you remove a model,
+    // it messes with all the following index values
+    for(int i=_models.size()-1; i>=0; i--){
+        // get current model
+        ModelClass* model = at(i);
+        // remove it, if it doesn't meet the criteria
+        if(!modelPassesSingleValueFilter(model, key, val)) remove(model);
+    }
+}
+
+template <class ModelClass>
+void ofxCMS::Collection<ModelClass>::filterBy(const string &key, vector<string> &values){
+    // we have to do this backwards! because every time you remove a model,
+    // it messes with all the following index values
+    for(int i=_models.size()-1; i>=0; i--){
+        // get current model
+        ModelClass* model = at(i);
+        // remove it, if it doesn't meet the criteria
+        if(!modelPassesMultiValueFilter(model, key, values)) remove(model);
+    }
+}
+
+template <class ModelClass>
+void ofxCMS::Collection<ModelClass>::destroyBy(const string &key, const string &value){
+    // we have to do this backwards! because every time you remove a model,
+    // it messes with all the following index values
+    for(int i=_models.size()-1; i>=0; i--){
+        // get current model
+        ModelClass* model = at(i);
+        // remove it, if it doesn't meet the criteria
+        if(model->get(key) == value) destroy(model);
+    }
+}
+
+template <class ModelClass>
+bool ofxCMS::Collection<ModelClass>::parse(const string &jsonText, bool doRemove, bool doUpdate, bool doCreate){
+    ofxJSONElement json;
+
+    // try to parse json, abort if it fails
+    if(!json.parse(jsonText)){
+        ofLogWarning() << "Couldn't parse JSON:\n--JSON START --\n" << jsonText << "\n--JSON END --";
+        return false;
+    }
+
+    // make sure we've got an array, we're a collection after all
+    if(!json.isArray()){
+        ofLogWarning() << "JSON not an array:\n--JSON START --\n" << jsonText << "\n--JSON END --";
+        return false;
+    }
+
+    if(doRemove){
+        // loop over all models that were already in the collection,
+        // remove any model for which we can't find any record in the new json
+        // IMPORTANT! Gotta start with the highest indexes first, because otherwise indexes
+        // of higher-up models get messed up when removing models earlier in the list
         for(int i=_models.size()-1; i>=0; i--){
-            // get current model
-            ModelClass* model = at(i);
-            // remove it, if it doesn't meet the criteria
-            if(!modelPassesSingleValueFilter(model, key, val)) remove(model);
+            // assume we'll have to remove the model as long as we haven't found a matching record in the json
+            bool remove_model = true;
+
+            // get the current model's id to match on
+            string id = _models[i]->id();
+
+            // loop over all items in the new json to see if there's a record with the same id
+            for(int j=0; j<json.size(); j++){
+                // if there's a record with this id, we don't have to do anything
+                if(json[j]["_id"]["$oid"] == id)
+                    remove_model = false;
+            }
+
+            // if remove_model us still true, this means that no records with a matching id was found,
+            // meaning this in-memory record in no-longer was removed from the collection and we should drop it as well
+            if(remove_model){
+                destroy(_models[i]);
+            }
         }
     }
 
-    template <class ModelClass>
-    void CMS::Collection<ModelClass>::filterBy(const string &key, vector<string> &values){
-        // we have to do this backwards! because every time you remove a model,
-        // it messes with all the following index values
-        for(int i=_models.size()-1; i>=0; i--){
-            // get current model
-            ModelClass* model = at(i);
-            // remove it, if it doesn't meet the criteria
-            if(!modelPassesMultiValueFilter(model, key, values)) remove(model);
-        }
-    }
+    for(int i = 0; i < json.size(); i++) {
+        ModelClass *existing = json[i]["_id"]["$oid"].isNull() ? NULL : findById(json[i]["_id"]["$oid"].asString());
 
-    template <class ModelClass>
-    void CMS::Collection<ModelClass>::destroyBy(const string &key, const string &value){
-        // we have to do this backwards! because every time you remove a model,
-        // it messes with all the following index values
-        for(int i=_models.size()-1; i>=0; i--){
-            // get current model
-            ModelClass* model = at(i);
-            // remove it, if it doesn't meet the criteria
-            if(model->get(key) == value) destroy(model);
-        }
-    }
+        // found existing model with same id? update it by setting its json attribute
+        if(existing && doUpdate){
+            // let the Model attribute changed callbacks deal with further parsing
+            parseModelJson(existing, ((ofxJSONElement)json[i]).getRawString(false));
 
-    template <class ModelClass>
-    bool Collection<ModelClass>::parse(const string &jsonText, bool doRemove, bool doUpdate, bool doCreate){
-        ofxJSONElement json;
+        } else if(doCreate){
+            // do an early limit check, to avoid unnecessary parsing
+            if(limitReached() && !bFIFO){
+                ofLog() << "Collection parsing: model skipped because limit reached (NO FIFO)";
+            } else {
+                //  not existing model found? Add a new one
+                ModelClass *new_model = new ModelClass();
 
-        // try to parse json, abort if it fails
-        if(!json.parse(jsonText)){
-            ofLogWarning() << "Couldn't parse JSON:\n--JSON START --\n" << jsonText << "\n--JSON END --";
-            return false;
-        }
-
-        // make sure we've got an array, we're a collection after all
-        if(!json.isArray()){
-            ofLogWarning() << "JSON not an array:\n--JSON START --\n" << jsonText << "\n--JSON END --";
-            return false;
-        }
-
-        if(doRemove){
-            // loop over all models that were already in the collection,
-            // remove any model for which we can't find any record in the new json
-            // IMPORTANT! Gotta start with the highest indexes first, because otherwise indexes
-            // of higher-up models get messed up when removing models earlier in the list
-            for(int i=_models.size()-1; i>=0; i--){
-                // assume we'll have to remove the model as long as we haven't found a matching record in the json
-                bool remove_model = true;
-
-                // get the current model's id to match on
-                string id = _models[i]->id();
-
-                // loop over all items in the new json to see if there's a record with the same id
-                for(int j=0; j<json.size(); j++){
-                    // if there's a record with this id, we don't have to do anything
-                    if(json[j]["_id"]["$oid"] == id)
-                        remove_model = false;
-                }
-
-                // if remove_model us still true, this means that no records with a matching id was found,
-                // meaning this in-memory record in no-longer was removed from the collection and we should drop it as well
-                if(remove_model){
-                    destroy(_models[i]);
+                parseModelJson(new_model, ((ofxJSONElement)json[i]).getRawString(false));
+                // if we couldn't add this model to the collection
+                // destroy the model, otherwise it's just hanging out in memory
+                if(!add(new_model)){
+                    delete new_model;
                 }
             }
         }
-
-        for(int i = 0; i < json.size(); i++) {
-            ModelClass *existing = json[i]["_id"]["$oid"].isNull() ? NULL : findById(json[i]["_id"]["$oid"].asString());
-
-            // found existing model with same id? update it by setting its json attribute
-            if(existing && doUpdate){
-                // let the Model attribute changed callbacks deal with further parsing
-                parseModelJson(existing, ((ofxJSONElement)json[i]).getRawString(false));
-
-            } else if(doCreate){
-                // do an early limit check, to avoid unnecessary parsing
-                if(limitReached() && !bFIFO){
-                    ofLog() << "Collection parsing: model skipped because limit reached (NO FIFO)";
-                } else {
-                    //  not existing model found? Add a new one
-                    ModelClass *new_model = new ModelClass();
-
-                    parseModelJson(new_model, ((ofxJSONElement)json[i]).getRawString(false));
-                    // if we couldn't add this model to the collection
-                    // destroy the model, otherwise it's just hanging out in memory
-                    if(!add(new_model)){
-                        delete new_model;
-                    }
-                }
-            }
-        }
-
-        ofLogVerbose() << "CMS::Collection::parse() finished, number of models in collection: " << _models.size();
-        ofNotifyEvent(collectionInitializedEvent, this);
-        return true;
     }
 
-    // for convenience
-    template <class ModelClass>
-    bool Collection<ModelClass>::parse(const ofxJSONElement & node, bool doRemove, bool doUpdate, bool doCreate){
-        if(node.type() == Json::nullValue) return false;
+    ofLogVerbose() << "ofxCMS::Collection::parse() finished, number of models in collection: " << _models.size();
+    ofNotifyEvent(collectionInitializedEvent, this);
+    return true;
+}
 
-        // Can't figure out how to use this kinda object, so for now; let the text-based parse method deal with it
-        // (meaning we'll convert back to text, and parse that to json again... yea...)
-        if(node.type() == Json::stringValue) return parse(node.asString(), doRemove, doUpdate, doCreate);
-        return parse(node.getRawString(), doRemove, doUpdate, doCreate);
+// for convenience
+template <class ModelClass>
+bool ofxCMS::Collection<ModelClass>::parse(const ofxJSONElement & node, bool doRemove, bool doUpdate, bool doCreate){
+    if(node.type() == Json::nullValue) return false;
+
+    // Can't figure out how to use this kinda object, so for now; let the text-based parse method deal with it
+    // (meaning we'll convert back to text, and parse that to json again... yea...)
+    if(node.type() == Json::stringValue) return parse(node.asString(), doRemove, doUpdate, doCreate);
+    return parse(node.getRawString(), doRemove, doUpdate, doCreate);
+}
+
+template <class ModelClass>
+void ofxCMS::Collection<ModelClass>::parseModelJson(ModelClass *model, const string &jsonText){
+    ofxJSONElement doc;
+
+    if(!doc.parse(jsonText)){
+        ofLogWarning() << "ofxCMS::Collection::parseModelJson() - couldn't parse json:\n-- JSON start --\n" << jsonText << "\n-- JSON end --";
+        return;
     }
 
-    template <class ModelClass>
-    void Collection<ModelClass>::parseModelJson(ModelClass *model, const string &jsonText){
-        ofxJSONElement doc;
-
-        if(!doc.parse(jsonText)){
-            ofLogWarning() << "CMS::Collection::parseModelJson() - couldn't parse json:\n-- JSON start --\n" << jsonText << "\n-- JSON end --";
-            return;
-        }
-
-        vector<string> attrs = doc.getMemberNames();
-        for(int i=0; i<attrs.size(); i++){
-            model->set(attrs[i], parseModelJsonValue(doc[attrs[i]]));
-        }
+    vector<string> attrs = doc.getMemberNames();
+    for(int i=0; i<attrs.size(); i++){
+        model->set(attrs[i], parseModelJsonValue(doc[attrs[i]]));
     }
+}
 
-    template <class ModelClass>
-    string Collection<ModelClass>::parseModelJsonValue(Json::Value &value){
-        //    return value.asString();
-        if(value.isObject() && value.isMember("$oid")) return value["$oid"].asString();
-        if(value.isObject() && value.isMember("$date")) return ofToString(value["$date"]);
-        if(value.isObject()) return ((ofxJSONElement)value).getRawString(false);
-        // here's a real clumsy way of removing leading and trailing white-space and double-quotes;
-        string val = ofToString(value);
-        // trim left
-        val.erase(0, val.find_first_not_of(" \n\r\t"));
-        // trim right
-        val.erase(val.find_last_not_of(" \n\r\t")+1);
-        // trim leading quote
-        if(val.find('"') == 0) val.erase(0, 1);
-        // trim trailing quote
-        if(val.rfind('"') == val.length()-1) val.erase(val.length()-1);
+template <class ModelClass>
+string ofxCMS::Collection<ModelClass>::parseModelJsonValue(Json::Value &value){
+    //    return value.asString();
+    if(value.isObject() && value.isMember("$oid")) return value["$oid"].asString();
+    if(value.isObject() && value.isMember("$date")) return ofToString(value["$date"]);
+    if(value.isObject()) return ((ofxJSONElement)value).getRawString(false);
+    // here's a real clumsy way of removing leading and trailing white-space and double-quotes;
+    string val = ofToString(value);
+    // trim left
+    val.erase(0, val.find_first_not_of(" \n\r\t"));
+    // trim right
+    val.erase(val.find_last_not_of(" \n\r\t")+1);
+    // trim leading quote
+    if(val.find('"') == 0) val.erase(0, 1);
+    // trim trailing quote
+    if(val.rfind('"') == val.length()-1) val.erase(val.length()-1);
 
 //        while(unsigned i = val.find("\\\"") != string::npos)
 //            val.erase(i, 1);
 
-        return val;
+    return val;
+}
+
+template <class ModelClass>
+ModelClass* ofxCMS::Collection<ModelClass>::previous(ModelClass* model){
+    int idx = indexByCid(model->cid());
+    if(idx == -1) return NULL;
+    return at((idx-1) % models().size());
+}
+
+template <class ModelClass>
+ModelClass* ofxCMS::Collection<ModelClass>::next(ModelClass* model){
+    int idx = indexByCid(model->cid());
+    if(idx == -1) return NULL;
+    return at((idx+1) % models().size());
+}
+
+template <class ModelClass>
+void ofxCMS::Collection<ModelClass>::clone(Collection<ModelClass> &source){
+    clear(); // triggers modelRemovedEvents for each model
+    for(int i=0; i<source.models().size(); i++){
+        add(source.at(i)); // trigges modelAddedEvents
+    }
+}
+
+template <class ModelClass>
+void ofxCMS::Collection<ModelClass>::syncsFrom(Collection<ModelClass> &collection, bool clearFirst){
+    // first, UNregister existing sync source callbacks
+    stopSyncing();
+    // we'll need this at destructor-time to unregister event callbacks
+    _syncSource = &collection;
+    // clear collection before syncing with new sync source
+    if(clearFirst) clear();
+    // first, clone the current content
+    clone(*_syncSource);
+    // second, register callbacks to stay up-to-date on later changes
+    registerSyncCallbacks(*_syncSource);
+}
+
+template <class ModelClass>
+void ofxCMS::Collection<ModelClass>::stopSyncing(){
+    if(_syncSource){
+        registerSyncCallbacks(*_syncSource, false);
+        _syncSource = NULL;
+    }
+}
+
+// We have to use the Model& type here instead ModelClass& because all used Model types
+// inherit from Model which has an ofEvent<Model> beforeDestroyEvent attribute which they all use...
+template <class ModelClass>
+void ofxCMS::Collection<ModelClass>::onModelDestroying(Model& model){
+    remove((ModelClass*)&model, false /* just remove */);
+}
+
+template <class ModelClass>
+void ofxCMS::Collection<ModelClass>::onSyncSourceModelRemoved(ModelClass &model){
+    // we could just do `remove(&model);` here, but even though that model checks if the model exists in this collection,
+    // it kinda assumes it does and logs a warning message when this is not the case. Since it's very likely that a model
+    // that we receive in this callback function is NOT part of our collection, we perform this check here.
+    int idx = index(&model);
+    if(idx != INVALID_INDEX) remove(idx/*, false /* just remove, don't destroy? Syncing collections, probably shouldn't destroy on remove anyway... */);
+}
+
+// We have to use the Model& type here instead ModelClass& because all used Model types
+// inherit from Model which has an ofEvent<Model> beforeDestroyEvent attribute which they all use...
+template <class ModelClass>
+void ofxCMS::Collection<ModelClass>::onModelAttributeChanged(AttrChangeArgs &args){
+    // trigger a "forward" event; anybody can hook into this event to be notified
+    // about changes in any of the collection's models
+    ofNotifyEvent(modelChangedEvent, args, this);
+
+    // if one of our models changed and with the new changes no longer
+    // passes our active filters; remove it
+    if(!modelPassesActiveFilters((ModelClass*)args.model)){
+        // TODO; ofNotifyEvent?
+        remove((ModelClass*)args.model);
     }
 
-    template <class ModelClass>
-    ModelClass* Collection<ModelClass>::previous(ModelClass* model){
-        int idx = indexByCid(model->cid());
-        if(idx == -1) return NULL;
-        return at((idx-1) % models().size());
+    // if one of our models changed and with the new changes no longer
+    // passes our active rejections; remove it
+    if(!modelPassesActiveRejections((ModelClass*)args.model)){
+        // TODO; ofNotifyEvent?
+        remove((ModelClass*)args.model);
+    }
+}
+
+template <class ModelClass>
+void ofxCMS::Collection<ModelClass>::onSyncSourceModelAdded(ModelClass &m){
+    // if our sync source gets a new model, we follow...
+    // note that our add() function does apply all the active filters/rejections,
+    // so the model might not actually end up in our collection
+    add(&m);
+}
+
+template <class ModelClass>
+void ofxCMS::Collection<ModelClass>::onSyncSourceModelChanged(AttrChangeArgs &args){
+    if(args.model == NULL){
+        ofLogWarning() << "ofxCMS::Collection::onSyncSourceModelChanged(AttrChangeArgs &) - got NULL model";
+        return;
     }
 
-    template <class ModelClass>
-    ModelClass* Collection<ModelClass>::next(ModelClass* model){
-        int idx = indexByCid(model->cid());
-        if(idx == -1) return NULL;
-        return at((idx+1) % models().size());
-    }
+    //
+    // Use active filters and rejections to re-evaluate if the syncSource's model
+    // should or should not be in our collection after the change to its properties
+    //
 
-    template <class ModelClass>
-    void Collection<ModelClass>::clone(Collection<ModelClass> &source){
-        clear(); // triggers modelRemovedEvents for each model
-        for(int i=0; i<source.models().size(); i++){
-            add(source.at(i)); // trigges modelAddedEvents
-        }
-    }
+    // see if the model passes our active filter and rejection rules
+    bool pass = modelPassesActiveFilters((ModelClass*)args.model) && modelPassesActiveRejections((ModelClass*)args.model);
 
-    template <class ModelClass>
-    void Collection<ModelClass>::syncsFrom(Collection<ModelClass> &collection, bool clearFirst){
-        // first, UNregister existing sync source callbacks
-        stopSyncing();
-        // we'll need this at destructor-time to unregister event callbacks
-        _syncSource = &collection;
-        // clear collection before syncing with new sync source
-        if(clearFirst) clear();
-        // first, clone the current content
-        clone(*_syncSource);
-        // second, register callbacks to stay up-to-date on later changes
-        registerSyncCallbacks(*_syncSource);
-    }
-
-    template <class ModelClass>
-    void Collection<ModelClass>::stopSyncing(){
-        if(_syncSource){
-            registerSyncCallbacks(*_syncSource, false);
-            _syncSource = NULL;
-        }
-    }
-
-    // We have to use the Model& type here instead ModelClass& because all used Model types
-    // inherit from Model which has an ofEvent<Model> beforeDestroyEvent attribute which they all use...
-    template <class ModelClass>
-    void Collection<ModelClass>::onModelDestroying(Model& model){
-        remove((ModelClass*)&model, false /* just remove */);
-    }
-
-    template <class ModelClass>
-    void Collection<ModelClass>::onSyncSourceModelRemoved(ModelClass &model){
-        // we could just do `remove(&model);` here, but even though that model checks if the model exists in this collection,
-        // it kinda assumes it does and logs a warning message when this is not the case. Since it's very likely that a model
-        // that we receive in this callback function is NOT part of our collection, we perform this check here.
-        int idx = index(&model);
-        if(idx != INVALID_INDEX) remove(idx/*, false /* just remove, don't destroy? Syncing collections, probably shouldn't destroy on remove anyway... */);
-    }
-
-    // We have to use the Model& type here instead ModelClass& because all used Model types
-    // inherit from Model which has an ofEvent<Model> beforeDestroyEvent attribute which they all use...
-    template <class ModelClass>
-    void Collection<ModelClass>::onModelAttributeChanged(AttrChangeArgs &args){
-        // trigger a "forward" event; anybody can hook into this event to be notified
-        // about changes in any of the collection's models
-        ofNotifyEvent(modelChangedEvent, args, this);
-
-        // if one of our models changed and with the new changes no longer
-        // passes our active filters; remove it
-        if(!modelPassesActiveFilters((ModelClass*)args.model)){
-            // TODO; ofNotifyEvent?
+    if(this->has((ModelClass*)args.model)){
+        // already in our collection;
+        // if after the change the model does NOT pass our filters; remove it
+        if(!pass)
             remove((ModelClass*)args.model);
-        }
 
-        // if one of our models changed and with the new changes no longer
-        // passes our active rejections; remove it
-        if(!modelPassesActiveRejections((ModelClass*)args.model)){
-            // TODO; ofNotifyEvent?
-            remove((ModelClass*)args.model);
-        }
+        return;
     }
 
-    template <class ModelClass>
-    void Collection<ModelClass>::onSyncSourceModelAdded(ModelClass &m){
-        // if our sync source gets a new model, we follow...
-        // note that our add() function does apply all the active filters/rejections,
-        // so the model might not actually end up in our collection
-        add(&m);
-    }
+    // not yet in our collection?
+    // if after the change the model DOES pass our filters; add it
+    if(pass)
+        add((ModelClass*)args.model);
+}
 
-    template <class ModelClass>
-    void Collection<ModelClass>::onSyncSourceModelChanged(AttrChangeArgs &args){
-        if(args.model == NULL){
-            ofLogWarning() << "CMS::Collection::onSyncSourceModelChanged(AttrChangeArgs &) - got NULL model";
-            return;
-        }
-
-        //
-        // Use active filters and rejections to re-evaluate if the syncSource's model
-        // should or should not be in our collection after the change to its properties
-        //
-
-        // see if the model passes our active filter and rejection rules
-        bool pass = modelPassesActiveFilters((ModelClass*)args.model) && modelPassesActiveRejections((ModelClass*)args.model);
-
-        if(this->has((ModelClass*)args.model)){
-            // already in our collection;
-            // if after the change the model does NOT pass our filters; remove it
-            if(!pass)
-                remove((ModelClass*)args.model);
-
-            return;
-        }
-
-        // not yet in our collection?
-        // if after the change the model DOES pass our filters; add it
-        if(pass)
-            add((ModelClass*)args.model);
-    }
-
-    template <class ModelClass>
-    void Collection<ModelClass>::onSyncSourceDestroying(Collection<ModelClass> &syncSourceCollection){
-        stopSyncing();
-    }
-
-}; // namespace CMS
+template <class ModelClass>
+void ofxCMS::Collection<ModelClass>::onSyncSourceDestroying(Collection<ModelClass> &syncSourceCollection){
+    stopSyncing();
+}
