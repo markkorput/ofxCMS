@@ -1,0 +1,4 @@
+ofxUnitTests
+ofxLiquidEvent
+ofxCRUD
+ofxOsc

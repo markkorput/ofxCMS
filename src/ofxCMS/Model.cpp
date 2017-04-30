@@ -6,12 +6,12 @@
 //
 //
 
-#include "CMSModel.h"
+#include "Model.h"
 #include "ofxJSONElement.h"
 
 #define INVALID_CID (-1)
 
-using namespace CMS;
+using namespace ofxCMS;
 
 int Model::mCidCounter = 0;
 
@@ -89,12 +89,12 @@ vector<string> Model::jsonArrayToStringVector(string jsonText){
         ofLogWarning() << "Couldn't parse json: " << jsonText;
         return ids;
     }
-    
+
     if(!json.isArray()){
         ofLogWarning() << "ObjectModel's personas attribute is not an array: " << jsonText;
         return ids;
     }
-    
+
     // loop over each value in json array and add it to our ids vector
     for(int i=0; i<json.size(); i++){
         // mongoDB-style id

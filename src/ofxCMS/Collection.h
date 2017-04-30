@@ -6,17 +6,16 @@
 //
 //
 
-#ifndef __ofxCMS__CMSCollection__
-#define __ofxCMS__CMSCollection__
+#pragma once
 
 #include "ofMain.h"
 #include "ofxJSONElement.h"
 
 // Even though CMS::Collection is a template class,
 // it does assume that any used model-type inherits from CMS::Model
-#include "CMSModel.h"
+#include "Model.h"
 
-namespace CMS {
+namespace ofxCMS {
 
     // The CMS::Model / CMS::Collection system is based on pointers,
     // and data is parsed straight into existing models, so there should
@@ -92,7 +91,7 @@ namespace CMS {
                 if(MODELS_MATCH(_models[i], m))
                     return i;
             }
-            
+
             return INVALID_INDEX;
         }
 
@@ -214,7 +213,7 @@ namespace CMS {
             filterVectors.clear();
             rejectValues.clear();
             rejectVectors.clear();
-            
+
             // if we're syncing from a collection, the a clean sync, without the just removed filters
             if(resync && _syncSource){
                 clear();
@@ -236,7 +235,7 @@ namespace CMS {
         }
 
     protected: // filter methods
-        
+
         bool modelPassesActiveFilters(ModelClass* model){
             // single value filters
             for (map<string, string>::iterator it = filterValues.begin(); it!=filterValues.end(); it++){
@@ -260,10 +259,10 @@ namespace CMS {
                 // passes if it has one of the specified values
                 if(model->get(attr) == values[i]) return true;
             }
-            
+
             return false;
         }
-        
+
         bool modelPassesSingleValueFilter(ModelClass *model, const string &attr, const string &value){
             return model->get(attr) == value;
         }
@@ -298,7 +297,7 @@ namespace CMS {
         bool modelPassesSingleValueRejection(ModelClass *model, const string &attr, string value){
             return model->get(attr) != value;
         }
-        
+
     protected: // methods
 
         int indexByCid(const string &cid);
@@ -331,7 +330,7 @@ namespace CMS {
         }
 
     protected: // callbacks
-        
+
         // NOTE: Model& type, not ModelClass& (see comments at implementation)
         void onModelDestroying(Model& model);
         void onSyncSourceModelAdded(ModelClass &m);
@@ -339,9 +338,9 @@ namespace CMS {
         void onSyncSourceModelRemoved(ModelClass &m);
         void onModelAttributeChanged(AttrChangeArgs &args);
         void onSyncSourceDestroying(Collection<ModelClass> &syncSourceCollection);
-        
+
     public: // events
-        
+
         ofEvent <void> collectionInitializedEvent;
         ofEvent < Collection<ModelClass> > collectionDestroyingEvent;
         ofEvent <ModelClass> modelAddedEvent;
@@ -436,7 +435,7 @@ namespace CMS {
 
         for(int i=0; i<this->_models.size(); i++){
             ModelClass* m = _models[i];
-            
+
             if(m == NULL){ // this should be impossible but has been ocurring during debugging
                 ofLogError() << "CMS::Collection::remove(ModelClass*, bool) - got impossible NULL from _models vector, local int i == " << i << ", _models.size() == " << _models.size();
                 continue;
@@ -513,12 +512,12 @@ namespace CMS {
             remove(_models[i]);
         }
     }
-   
+
     template <class ModelClass>
     const vector<ModelClass*> &CMS::Collection<ModelClass>::models(){
         return _models;
     }
-    
+
     template <class ModelClass>
     int CMS::Collection<ModelClass>::indexByCid(const string &cid){
         for(int i=0; i<_models.size(); i++){
@@ -527,7 +526,7 @@ namespace CMS {
         }
         return -1;
     }
-    
+
     template <class ModelClass>
     ModelClass* CMS::Collection<ModelClass>::at(unsigned int idx){
 		// if(idx < 0){ // this is impossible; idx is an UNSIGNED int
@@ -549,7 +548,7 @@ namespace CMS {
             if(_models[i]->get(attr) == value)
                 return _models[i];
         }
-        
+
         return NULL;
     }
 
@@ -559,7 +558,7 @@ namespace CMS {
             if(_models[i]->id() == _id)
                 return _models[i];
         }
-        
+
         return NULL;
     }
 
@@ -629,17 +628,17 @@ namespace CMS {
             for(int i=_models.size()-1; i>=0; i--){
                 // assume we'll have to remove the model as long as we haven't found a matching record in the json
                 bool remove_model = true;
-                
+
                 // get the current model's id to match on
                 string id = _models[i]->id();
-                
+
                 // loop over all items in the new json to see if there's a record with the same id
                 for(int j=0; j<json.size(); j++){
                     // if there's a record with this id, we don't have to do anything
                     if(json[j]["_id"]["$oid"] == id)
                         remove_model = false;
                 }
-                
+
                 // if remove_model us still true, this means that no records with a matching id was found,
                 // meaning this in-memory record in no-longer was removed from the collection and we should drop it as well
                 if(remove_model){
@@ -683,7 +682,7 @@ namespace CMS {
     template <class ModelClass>
     bool Collection<ModelClass>::parse(const ofxJSONElement & node, bool doRemove, bool doUpdate, bool doCreate){
         if(node.type() == Json::nullValue) return false;
-        
+
         // Can't figure out how to use this kinda object, so for now; let the text-based parse method deal with it
         // (meaning we'll convert back to text, and parse that to json again... yea...)
         if(node.type() == Json::stringValue) return parse(node.asString(), doRemove, doUpdate, doCreate);
@@ -755,7 +754,7 @@ namespace CMS {
         // first, UNregister existing sync source callbacks
         stopSyncing();
         // we'll need this at destructor-time to unregister event callbacks
-        _syncSource = &collection;   
+        _syncSource = &collection;
         // clear collection before syncing with new sync source
         if(clearFirst) clear();
         // first, clone the current content
@@ -853,9 +852,5 @@ namespace CMS {
     void Collection<ModelClass>::onSyncSourceDestroying(Collection<ModelClass> &syncSourceCollection){
         stopSyncing();
     }
-    
+
 }; // namespace CMS
-
-
-
-#endif /* defined(__ofxCMS__CMSCollection__) */

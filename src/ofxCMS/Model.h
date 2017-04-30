@@ -6,12 +6,11 @@
 //
 //
 
-#ifndef __ofxCMS__CMSModel__
-#define __ofxCMS__CMSModel__
+#pragma once
 
 #include "ofMain.h"
 
-namespace CMS {
+namespace ofxCMS {
 
     class Model;
 
@@ -22,7 +21,7 @@ namespace CMS {
         string attr;
         string value;
     };
-    
+
     // a key-value pair model that fires notifications when attributes change,
     // kinda based on the Backbone.js Models
     class Model{
@@ -51,7 +50,7 @@ namespace CMS {
         ofEvent <Model> beforeDestroyEvent;
 
     protected: // callbacks
-        
+
         virtual void onSetAttribute(const string &attr, const string &value){}
         virtual void onAttributeChanged(const string &attr, const string &value, const string &old_value){}
 
@@ -65,7 +64,5 @@ namespace CMS {
         static int mCidCounter; // to give every model its own
 
     }; // class Model
-    
-}; // namespace CMS
 
-#endif /* defined(__ofxCMS__CMSModel__) */
+}; // namespace CMS
