@@ -13,12 +13,8 @@
 
 using namespace ofxCMS;
 
-int Model::mCidCounter = 0;
-
 Model::Model(){
-    // TODO: use a more globally unique timestamp-based Cid format?
-    mCid = "c"+ofToString(mCidCounter);
-    mCidCounter++;
+    mCid = "";
 }
 
 // Model::~Model(){
@@ -31,13 +27,15 @@ Model* Model::set(const string &attr, const string &value, bool notify){
     _attributes[attr] = value;
     onSetAttribute(attr, value);
 
-    if(old_value != value){
+    if(notify && old_value != value){
         static AttrChangeArgs args;
         args.model = this;
         args.attr = attr;
         args.value = value;
         onAttributeChanged(attr, value, old_value);
-        ofNotifyEvent(attributeChangedEvent, args, this);
+
+        if(notify)
+            attributeChangedEvent.notifyListeners(args);
     }
 
     // returning `this` allows the caller to link operations, like so:
@@ -46,9 +44,9 @@ Model* Model::set(const string &attr, const string &value, bool notify){
 }
 
 
-Model* Model::set(map<string, string> &attrs){
+Model* Model::set(map<string, string> &attrs, bool notify){
     for(map<string, string>::iterator it=attrs.begin(); it != attrs.end(); it++){
-        this->set(it->first, it->second);
+        this->set(it->first, it->second, notify);
     }
 
 	return this;

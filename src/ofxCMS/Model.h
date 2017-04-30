@@ -9,6 +9,7 @@
 #pragma once
 
 #include "ofMain.h"
+#include "LambdaEvent.h"
 
 namespace ofxCMS {
 
@@ -30,8 +31,9 @@ namespace ofxCMS {
         Model();
         // ~Model();
 
+        void setId(const string& newId){ mCid = newId; }
         Model* set(const string &attr, const string &value, bool notify = true);
-        Model* set(map<string, string> &attrs);
+        Model* set(map<string, string> &attrs, bool notify=true);
         string get(const string &attr, string _default = "");
         string id();
         string cid();
@@ -46,7 +48,7 @@ namespace ofxCMS {
 
     public: // events
 
-        ofEvent <AttrChangeArgs> attributeChangedEvent;
+        LambdaEvent<AttrChangeArgs> attributeChangedEvent;
         ofEvent <Model> beforeDestroyEvent;
 
     protected: // callbacks
@@ -61,7 +63,6 @@ namespace ofxCMS {
         // CID stuff (client-id, local/internal ids,
         // mainly to identify unpersisted models)
         string mCid;
-        static int mCidCounter; // to give every model its own
 
     }; // class Model
 

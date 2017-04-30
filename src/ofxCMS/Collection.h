@@ -10,7 +10,7 @@
 
 #include "ofMain.h"
 #include "ofxJSONElement.h"
-
+#include "LambdaEvent.h"
 // Even though ofxCMS::Collection is a template class,
 // it does assume that any used model-type inherits from CMS::Model
 #include "Model.h"
@@ -35,10 +35,12 @@ namespace ofxCMS {
         const static int NO_LIMIT = -1;
         const static int INVALID_INDEX = -1;
 
-        Collection() : _syncSource(NULL), mLimit(NO_LIMIT), bFIFO(false), bDestroyOnRemove(false){}
+        Collection() : _syncSource(NULL), mLimit(NO_LIMIT), bFIFO(false), bDestroyOnRemove(false), mNextId(1){}
         ~Collection();
 
         void initialize(vector< map<string, string> > &_data);
+
+        shared_ptr<ModelClass> create();
 
         bool add(ModelClass *model, bool notify = true);
         ModelClass* remove(ModelClass *model, bool doDestroy = true);
@@ -317,26 +319,12 @@ namespace ofxCMS {
             }
         }
 
-        void registerModelCallbacks(ModelClass* model, bool _register = true){
-            if(_register){
-                // when a models (self-)destructs, we gotta remove it from our collection,
-                // otherwise we end up with invalid pointers
-                ofAddListener(model->beforeDestroyEvent, this, &Collection<ModelClass>::onModelDestroying);
-                ofAddListener(model->attributeChangedEvent, this, &Collection<ModelClass>::onModelAttributeChanged);
-            } else {
-                ofRemoveListener(model->attributeChangedEvent, this, &Collection<ModelClass>::onModelAttributeChanged);
-                ofRemoveListener(model->beforeDestroyEvent, this, &Collection<ModelClass>::onModelDestroying);
-            }
-        }
-
     protected: // callbacks
 
         // NOTE: Model& type, not ModelClass& (see comments at implementation)
-        void onModelDestroying(Model& model);
         void onSyncSourceModelAdded(ModelClass &m);
         void onSyncSourceModelChanged(AttrChangeArgs &args);
         void onSyncSourceModelRemoved(ModelClass &m);
-        void onModelAttributeChanged(AttrChangeArgs &args);
         void onSyncSourceDestroying(Collection<ModelClass> &syncSourceCollection);
 
     public: // events
@@ -346,7 +334,7 @@ namespace ofxCMS {
         ofEvent <ModelClass> modelAddedEvent;
         ofEvent <ModelClass> modelRemovedEvent;
         ofEvent <ModelClass> modelRejectedEvent;
-        ofEvent <AttrChangeArgs> modelChangedEvent;
+        LambdaEvent <AttrChangeArgs> modelChangedEvent;
         ofEvent < Collection<ModelClass> > fifoEvent;
 
     protected: // attributes
@@ -364,6 +352,7 @@ namespace ofxCMS {
         bool bFIFO;
         // destroy models when removing them fmor the collection? (default: false)
         bool bDestroyOnRemove;
+        int mNextId;
 
     }; // class Collection
 } // namespace ofxCMS
@@ -392,6 +381,14 @@ void ofxCMS::Collection<ModelClass>::initialize(vector< map<string, string> > &_
 }
 
 template <class ModelClass>
+shared_ptr<ModelClass> ofxCMS::Collection<ModelClass>::create(){
+    auto ref = make_shared<ModelClass>();
+    ref->setId(ofToString(mNextId));
+    mNextId++;
+    return ref;
+}
+
+template <class ModelClass>
 bool ofxCMS::Collection<ModelClass>::add(ModelClass *model, bool notify){
     // What the hell are we supposed to do with this??
     if(model == NULL) return false;
@@ -417,7 +414,55 @@ bool ofxCMS::Collection<ModelClass>::add(ModelClass *model, bool notify){
     // add to our collection
     _models.push_back(model);
 
-    registerModelCallbacks(model);
+    // add
+    //registerModelCallbacks(model);
+    this->modelChangedEvent.forward(model->attributeChangedEvent);
+
+    // model->attributeChangedEvent += [this](ofxCMS::AttrChangeArgs& args) -> void {
+    //     // if one of our models changed and with the new changes no longer
+    //     // passes our active filters; remove it
+    //     if(!modelPassesActiveFilters((ModelClass*)args.model)){
+    //         remove((ModelClass*)args.model);
+    //     }
+    //
+    //     // if one of our models changed and with the new changes no longer
+    //     // passes our active rejections; remove it
+    //     if(!modelPassesActiveRejections((ModelClass*)args.model)){
+    //         remove((ModelClass*)args.model);
+    //     }
+    // }
+    // };
+
+    // // ofAddListener(model->beforeDestroyEvent, this, &Collection<ModelClass>::onModelDestroying);
+    // ofAddListener(model->attributeChangedEvent, this, &Collection<ModelClass>::onModelAttributeChanged);
+
+    //
+    // // We have to use the Model& type here instead ModelClass& because all used Model types
+    // // inherit from Model which has an ofEvent<Model> beforeDestroyEvent attribute which they all use...
+    // template <class ModelClass>
+    // void ofxCMS::Collection<ModelClass>::onModelAttributeChanged(AttrChangeArgs &args){
+    //     // trigger a "forward" event; anybody can hook into this event to be notified
+    //     // about changes in any of the collection's models
+    //     ofNotifyEvent(modelChangedEvent, args, this);
+    //
+    //     // if one of our models changed and with the new changes no longer
+    //     // passes our active filters; remove it
+    //     if(!modelPassesActiveFilters((ModelClass*)args.model)){
+    //         // TODO; ofNotifyEvent?
+    //         remove((ModelClass*)args.model);
+    //     }
+    //
+    //     // if one of our models changed and with the new changes no longer
+    //     // passes our active rejections; remove it
+    //     if(!modelPassesActiveRejections((ModelClass*)args.model)){
+    //         // TODO; ofNotifyEvent?
+    //         remove((ModelClass*)args.model);
+    //     }
+    // }
+
+
+
+
 
     // let's tell the world
     if(notify) ofNotifyEvent(modelAddedEvent, *model, this);
@@ -459,7 +504,6 @@ ModelClass* ofxCMS::Collection<ModelClass>::remove(int index, bool doDestroy){
 		return NULL;
 	}
 
-    registerModelCallbacks(model, false);
     _models.erase(_models.begin() + index);
     ofNotifyEvent(modelRemovedEvent, *model, this);
 
@@ -771,12 +815,6 @@ void ofxCMS::Collection<ModelClass>::stopSyncing(){
     }
 }
 
-// We have to use the Model& type here instead ModelClass& because all used Model types
-// inherit from Model which has an ofEvent<Model> beforeDestroyEvent attribute which they all use...
-template <class ModelClass>
-void ofxCMS::Collection<ModelClass>::onModelDestroying(Model& model){
-    remove((ModelClass*)&model, false /* just remove */);
-}
 
 template <class ModelClass>
 void ofxCMS::Collection<ModelClass>::onSyncSourceModelRemoved(ModelClass &model){
@@ -785,29 +823,6 @@ void ofxCMS::Collection<ModelClass>::onSyncSourceModelRemoved(ModelClass &model)
     // that we receive in this callback function is NOT part of our collection, we perform this check here.
     int idx = index(&model);
     if(idx != INVALID_INDEX) remove(idx/*, false /* just remove, don't destroy? Syncing collections, probably shouldn't destroy on remove anyway... */);
-}
-
-// We have to use the Model& type here instead ModelClass& because all used Model types
-// inherit from Model which has an ofEvent<Model> beforeDestroyEvent attribute which they all use...
-template <class ModelClass>
-void ofxCMS::Collection<ModelClass>::onModelAttributeChanged(AttrChangeArgs &args){
-    // trigger a "forward" event; anybody can hook into this event to be notified
-    // about changes in any of the collection's models
-    ofNotifyEvent(modelChangedEvent, args, this);
-
-    // if one of our models changed and with the new changes no longer
-    // passes our active filters; remove it
-    if(!modelPassesActiveFilters((ModelClass*)args.model)){
-        // TODO; ofNotifyEvent?
-        remove((ModelClass*)args.model);
-    }
-
-    // if one of our models changed and with the new changes no longer
-    // passes our active rejections; remove it
-    if(!modelPassesActiveRejections((ModelClass*)args.model)){
-        // TODO; ofNotifyEvent?
-        remove((ModelClass*)args.model);
-    }
 }
 
 template <class ModelClass>
