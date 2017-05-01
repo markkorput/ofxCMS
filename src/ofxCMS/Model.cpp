@@ -29,8 +29,10 @@ Model* Model::set(const string &attr, const string &value, bool notify){
         args.value = value;
         onAttributeChanged(attr, value, old_value);
 
-        if(notify)
-            attributeChangedEvent.notifyListeners(args);
+        if(notify){
+            changeEvent.notifyListeners(*this);
+            attributeChangeEvent.notifyListeners(args);
+        }
     }
 
     // returning `this` allows the caller to link operations, like so:

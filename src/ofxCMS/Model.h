@@ -12,22 +12,19 @@
 #include "LambdaEvent.h"
 
 namespace ofxCMS {
-
-    class Model;
-
-
-
-    // used in attributeChangeEvent notifications
-    class AttrChangeArgs {
-    public:
-        Model *model;
-        string attr;
-        string value;
-    };
-
     // a key-value pair model that fires notifications when attributes change,
     // kinda based on the Backbone.js Models
     class Model{
+
+    public:
+
+        // used in attributeChangeEvent notifications
+        class AttrChangeArgs {
+        public:
+            Model *model;
+            string attr;
+            string value;
+        };
 
     public:
         static const int INVALID_CID;
@@ -45,6 +42,8 @@ namespace ofxCMS {
 
         map<string, string> &attributes(){ return _attributes; }
 
+        bool equals(shared_ptr<Model> other){ return other->cid() == cid(); }
+
     public: // static helpers
 
         static vector<string> jsonArrayToIdsVector(string jsonText);
@@ -52,7 +51,8 @@ namespace ofxCMS {
 
     public: // events
 
-        LambdaEvent<AttrChangeArgs> attributeChangedEvent;
+        LambdaEvent<Model> changeEvent;
+        LambdaEvent<AttrChangeArgs> attributeChangeEvent;
 
     protected: // callbacks
 
