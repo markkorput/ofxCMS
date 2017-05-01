@@ -315,6 +315,57 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(colRefC->size(), 1, "");
             test_eq(colRefA->size(), 1, "");
         TEST_END
+
+        TEST_START(filter once on specific value)
+            auto colRefA = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            // add three models with different age values
+            auto modelRef = colRefA->create();
+            modelRef->set("Age", "12");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "25");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "31");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "46");
+            // filter on specific age value
+            colRefA->filter("Age", "31", false); // perform one-time filter
+            test_eq(colRefA->size(), 1, "");
+            test_eq(colRefA->at(0)->get("Age"), "31", "");
+            // add new model
+            colRefA->create();
+            test_eq(colRefA->size(), 2, "");
+            test_eq(colRefA->at(1)->get("Age"), "", "");
+        TEST_END
+
+        // TEST_START(filter actively on specific value)
+        //     auto colRefA = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+        //     // add three models with different age values
+        //     auto modelRef = colRefA->create();
+        //     modelRef->set("Age", "12");
+        //     modelRef = colRefA->create();
+        //     modelRef->set("Age", "31");
+        //     modelRef = colRefA->create();
+        //     modelRef->set("Age", "46");
+        //     // filter on specific age value
+        //     colRefA->filter("Age", "31"); // active filter
+        //     test_eq(colRefA->size(), 1, "");
+        //     test_eq(colRefA->at(0)->get("Age"), "31", "");
+        //     // try and fail to add three new models
+        //     colRefA->create();
+        //     colRefA->create();
+        //     colRefA->create();
+        //     test_eq(colRefA->size(), 1, "");
+        //     // fail to add another model
+        //     modelRef = colRefA->create();
+        //     modelRef->set("Age", "35");
+        //     colRefA->add(modelRef);
+        //     test_eq(colRefA->size(), 1, "");
+        //     // succeed to add another model with the "right" Age value
+        //     modelRef = colRefA->create();
+        //     modelRef->set("Age", "31");
+        //     colRefA->add(modelRef);
+        //     test_eq(colRefA->size(), 2, "");
+        // TEST_END
     }
 };
 
