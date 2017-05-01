@@ -132,7 +132,14 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(collectionRef->at(1)->get("number"), "#two", "");
         TEST_END
 
-        ofLog() << "TODO: BaseCollection::previous/next";
+        TEST_START(previous n next)
+            test_eq(collectionRef->previous(collectionRef->at(1))->get("number"), "#one", "");
+            test_eq(collectionRef->previous(collectionRef->at(0), true)->get("number"), "#two", "");
+            test_eq(collectionRef->previous(collectionRef->at(0)) == nullptr, true, "");
+            test_eq(collectionRef->next(collectionRef->at(0))->get("number"), "#two", "");
+            test_eq(collectionRef->next(collectionRef->at(1), true)->get("number"), "#one", "");
+            test_eq(collectionRef->next(collectionRef->at(1)) == nullptr, true, "");
+        TEST_END
 
         // return an instance
         return collectionRef->create();
