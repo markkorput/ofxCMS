@@ -7,7 +7,7 @@
 //	#define OFXLIQUIDEVENT_USE_TR1
 //#endif
 
-#ifdef OFXLIQUIDEVENT_USE_TR1
+#ifdef OFXCMS_USE_TR1
 	#include <tr1/functional>
 	#define FUNCTION tr1::function
 #else

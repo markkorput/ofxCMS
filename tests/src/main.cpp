@@ -2,6 +2,7 @@
 #include "ofxUnitTests.h"
 // local
 #include "ofxCMS.h"
+#include "ofxCMS/lib/Middleware.h"
 
 #define TEST_START(x) {ofLog()<<"CASE: "<<#x;
 #define TEST_END }
@@ -9,6 +10,54 @@
 using namespace ofxCMS;
 
 class ofApp: public ofxUnitTestsApp{
+
+    void runMiddleware(){
+        TEST_START(middleware aborts)
+            Middleware<ofxCMS::Model> mid;
+
+            mid.addListener([](ofxCMS::Model& m) -> bool {
+                m.set("name", m.get("name") + " #1");
+                return true;
+            }, this);
+
+            mid.addListener([](ofxCMS::Model& m) -> bool {
+                m.set("name", m.get("name") + " #2");
+                return false; // <-- aborts!
+            }, this);
+
+            mid.addListener([](ofxCMS::Model& m) -> bool {
+                m.set("name", m.get("name") + " #3");
+                return true;
+            }, this);
+
+            ofxCMS::Model m;
+            test_eq(mid.notifyListeners(m), false, "");
+            test_eq(m.get("name"), " #1 #2", "");
+        TEST_END
+
+        TEST_START(middleware continues)
+        Middleware<ofxCMS::Model> mid;
+
+            mid.addListener([](ofxCMS::Model& m) -> bool {
+                m.set("name", m.get("name") + " #1");
+                return true;
+            }, this);
+
+            mid.addListener([](ofxCMS::Model& m) -> bool {
+                m.set("name", m.get("name") + " #2");
+                return true;
+            }, this);
+
+            mid.addListener([](ofxCMS::Model& m) -> bool {
+                m.set("name", m.get("name") + " #3");
+                return true;
+            }, this);
+
+            ofxCMS::Model m;
+            test_eq(mid.notifyListeners(m), true, "");
+            test_eq(m.get("name"), " #1 #2 #3", "");
+        TEST_END
+    }
 
     template<typename CollectionClass>
     shared_ptr<ofxCMS::Model> runCollection(){
@@ -147,6 +196,8 @@ class ofApp: public ofxUnitTestsApp{
     }
 
     void run(){
+        runMiddleware();
+
         auto modelRef = runCollection<ofxCMS::BaseCollection<ofxCMS::Model>>();
         unsigned int cid;
 
