@@ -8,6 +8,14 @@
 
 #pragma once
 
+#ifdef OFXCMS_USE_TR1
+	#include <tr1/functional>
+	#define FUNCTION tr1::function
+#else
+	#include <functional>
+	#define FUNCTION std::function
+#endif
+
 // BaseCollection is a "core-essential" base class for the main Collection class.
 // BaseCollection only implement the bare basics of creating, adding, update and removing items.
 
@@ -20,6 +28,8 @@ namespace ofxCMS {
             const static unsigned int NO_LIMIT = 0;
             const static unsigned int INVALID_INDEX = -1;
             const static int INVALID_CID = -1;
+
+            typedef FUNCTION<void(shared_ptr<ModelClass>)> ModelRefFunc;
 
             // used in attributeChangeEvent notifications
             struct AttrChangeArgs {
@@ -41,17 +51,20 @@ namespace ofxCMS {
             void add(shared_ptr<ModelClass> modelRef, bool notify=true);
             void initialize(vector<map<string, string>>& _data);
 
+            // CRUD - Read
+            const vector<shared_ptr<ModelClass>> &models(){ return modelRefs; }
+            shared_ptr<ModelClass> at(unsigned int idx);
+            shared_ptr<ModelClass> find(int cid){ return findByCid(cid); }
+            shared_ptr<ModelClass> findByCid(int cid);
+
             unsigned int size(){ return modelRefs.size(); }
             int randomIndex(){ return size() == 0 ? INVALID_INDEX : floor(ofRandom(size())); }
             shared_ptr<ModelClass> random(){ return size() == 0 ? nullptr : at(randomIndex()); }
             shared_ptr<ModelClass> previous(shared_ptr<ModelClass> model, bool wrap=false);
             shared_ptr<ModelClass> next(shared_ptr<ModelClass> model, bool wrap=false);
 
-            // CRUD - Read
-            const vector<shared_ptr<ModelClass>> &models(){ return modelRefs; }
-            shared_ptr<ModelClass> at(unsigned int idx);
-            shared_ptr<ModelClass> find(int cid){ return findByCid(cid); }
-            shared_ptr<ModelClass> findByCid(int cid);
+            // CRUD - "update"
+            void each(ModelRefFunc func);
 
             // CRUD - Delete
             shared_ptr<ModelClass> remove(shared_ptr<ModelClass> model, bool notify=true);
@@ -221,6 +234,13 @@ int ofxCMS::BaseCollection<ModelClass>::indexOfCid(int cid){
     }
 
     return INVALID_INDEX;
+}
+
+template <class ModelClass>
+void ofxCMS::BaseCollection<ModelClass>::each(ModelRefFunc func){
+    for(auto modelRef : modelRefs){
+        func(modelRef);
+    }
 }
 
 template <class ModelClass>

@@ -119,11 +119,17 @@ class ofApp: public ofxUnitTestsApp{
             m["number"] = "two";
             data.push_back(m);
 
-            collectionRef->initializeEvent.addListener([this](ofxCMS::BaseCollection<ofxCMS::Model> collection){
+            collectionRef->initializeEvent.addListener([](ofxCMS::BaseCollection<ofxCMS::Model>& col){
                 // TODO
+                col.each([](shared_ptr<ofxCMS::Model> modelRef){
+                    modelRef->set("number", "#"+modelRef->get("number"));
+                });
             }, this);
+
             collectionRef->initialize(data);
             test_eq(collectionRef->size(), 2, "");
+            test_eq(collectionRef->at(0)->get("number"), "#one", "");
+            test_eq(collectionRef->at(1)->get("number"), "#two", "");
         TEST_END
 
         ofLog() << "TODO: BaseCollection::previous/next";
