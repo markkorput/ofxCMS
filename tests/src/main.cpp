@@ -359,6 +359,34 @@ class ofApp: public ofxUnitTestsApp{
             colRefA->add(modelRef);
             test_eq(colRefA->size(), 2, "");
         TEST_END
+
+        TEST_START(filter using custom lambda)
+            auto colRefA = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            // add three models with different age values
+            auto modelRef = colRefA->create();
+            modelRef->set("Age", "12");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "25");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "31");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "46");
+            // filter on specific age value
+            colRefA->filter([](ofxCMS::Model& model) -> bool {
+                return ofToInt(model.get("Age")) >= 21;
+            });
+            test_eq(colRefA->size(), 3, "");
+            test_eq(colRefA->at(0)->get("Age"), "25", "");
+            // add new model
+            modelRef = colRefA->create();
+            test_eq(colRefA->size(), 3, ""); // not added
+            modelRef->set("Age", "20");
+            colRefA->add(modelRef);
+            test_eq(colRefA->size(), 3, ""); // not added
+            modelRef->set("Age", "21");
+            colRefA->add(modelRef);
+            test_eq(colRefA->size(), 4, ""); // now it's added
+        TEST_END
         // TEST_START(filter actively on specific value)
         //     auto colRefA = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
         //     // add three models with different age values

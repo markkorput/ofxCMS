@@ -23,6 +23,7 @@ namespace ofxCMS {
             CollectionFilter() : collection(NULL){};
             ~CollectionFilter(){ destroy(); }
             void setup(BaseCollection<ModelClass>* collection, const string& attr, const string& value, bool accept=true);
+            void setup(BaseCollection<ModelClass>* collection, Functor func);
             void destroy();
 
         private:
@@ -39,6 +40,21 @@ void ofxCMS::CollectionFilter<ModelClass>::setup(BaseCollection<ModelClass>* col
         bool match = model.get(attr) == value;
         return accept ? match : !match;
     };
+
+    // apply check to all currently added models
+    collection->each([collection, &func](shared_ptr<ModelClass> model){
+        if(!func(*model.get())){
+            collection->removeByCid(model->cid());
+        }
+    });
+
+    collection->beforeAdd.addListener(func, this);
+}
+
+template<class ModelClass>
+void ofxCMS::CollectionFilter<ModelClass>::setup(BaseCollection<ModelClass>* collection, Functor func){
+    destroy();
+    this->collection = collection;
 
     // apply check to all currently added models
     collection->each([collection, &func](shared_ptr<ModelClass> model){
