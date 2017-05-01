@@ -1,3 +1,8 @@
+// shared_ptr<ModelClass> findById(const string &_id);
+// shared_ptr<ModelClass> findByAttr(const string &attr, const string &value);
+//
+
+
 // public: // parsing methods
 //
 //     bool parse(const string &jsonText, bool doRemove = true, bool doUpdate = true, bool doCreate = true);

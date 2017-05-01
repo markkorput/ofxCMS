@@ -31,7 +31,7 @@ Model* Model::set(const string &attr, const string &value, bool notify){
 
         if(notify){
             changeEvent.notifyListeners(*this);
-            attributeChangedEvent.notifyListeners(args);
+            attributeChangeEvent.notifyListeners(args);
         }
     }
 

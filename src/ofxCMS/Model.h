@@ -52,7 +52,7 @@ namespace ofxCMS {
     public: // events
 
         LambdaEvent<Model> changeEvent;
-        LambdaEvent<AttrChangeArgs> attributeChangedEvent;
+        LambdaEvent<AttrChangeArgs> attributeChangeEvent;
 
     protected: // callbacks
 

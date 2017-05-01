@@ -9,4 +9,4 @@
 #pragma once
 
 #include "ofxCMS/Model.h"
-#include "ofxCMS/BaseCollection.h"
+#include "ofxCMS/Collection.h"

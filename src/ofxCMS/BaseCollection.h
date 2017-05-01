@@ -39,10 +39,13 @@ namespace ofxCMS {
             // CRUD - Create
             shared_ptr<ModelClass> create();
             void add(shared_ptr<ModelClass> modelRef, bool notify=true);
+            void initialize(vector< map<string, string> > &_data);
 
             unsigned int size(){ return modelRefs.size(); }
             int randomIndex(){ return size() == 0 ? INVALID_INDEX : floor(ofRandom(size())); }
             shared_ptr<ModelClass> random(){ return size() == 0 ? nullptr : at(randomIndex()); }
+            shared_ptr<ModelClass> previous(shared_ptr<ModelClass> model, bool wrap=false);
+            shared_ptr<ModelClass> next(shared_ptr<ModelClass> model, bool wrap=false);
 
             // CRUD - Read
             const vector<shared_ptr<ModelClass>> &models(){ return modelRefs; }
@@ -61,9 +64,10 @@ namespace ofxCMS {
         public: // events
 
             LambdaEvent<ModelClass> modelAddedEvent;
-            LambdaEvent<ModelClass> modelChangedEvent;
-            LambdaEvent<AttrChangeArgs> attributeChangedEvent;
-            LambdaEvent <ModelClass> modelRemovedEvent;
+            LambdaEvent<BaseCollection<ModelClass>> initializeEvent;
+            LambdaEvent<ModelClass> modelChangeEvent;
+            LambdaEvent<AttrChangeArgs> attributeChangeEvent;
+            LambdaEvent <ModelClass> modelRemoveEvent;
 
         private: // attributes
 
@@ -75,11 +79,14 @@ namespace ofxCMS {
 
 template <class ModelClass>
 void ofxCMS::BaseCollection<ModelClass>::destroy(){
+    ofLog() << "destroy";
     for(int i=modelRefs.size()-1; i>=0; i--){
-        remove(i);
+        ofLog() << "- " << i;
+        remove(i, false /* don't notify */);
     }
-
-    modelRefs.clear();
+    ofLog() << "clear";
+    // modelRefs.clear();
+    ofLog() << "cleardone";
 }
 
 template <class ModelClass>
@@ -101,7 +108,7 @@ void ofxCMS::BaseCollection<ModelClass>::add(shared_ptr<ModelClass> modelRef, bo
 
     // make sure we have a valid CID
     if(modelRef->cid() == INVALID_CID){
-        ofLogNotice() << "nextId: " << mNextId;
+        // ofLogNotice() << "nextId: " << mNextId;
         modelRef->setCid(mNextId);
         mNextId++;
     } else if(modelRef->cid() >= mNextId){
@@ -112,11 +119,10 @@ void ofxCMS::BaseCollection<ModelClass>::add(shared_ptr<ModelClass> modelRef, bo
     // add to our collection
     modelRefs.push_back(modelRef);
 
-    // add
-    //registerModelCallbacks(model);
-    this->modelChangedEvent.forward(modelRef->changeEvent);
+    // register callbacks (unregistered in .remove)
+    this->modelChangeEvent.forward(modelRef->changeEvent);
 
-    modelRef->attributeChangedEvent.addListener([this](ofxCMS::Model::AttrChangeArgs& args) -> void {
+    modelRef->attributeChangeEvent.addListener([this](ofxCMS::Model::AttrChangeArgs& args) -> void {
         // turn regular pointer into a shared_ptr (Ref) by looking it up in our internal ref list
         auto changedModelRef = this->findByCid(args.model->cid());
 
@@ -129,7 +135,7 @@ void ofxCMS::BaseCollection<ModelClass>::add(shared_ptr<ModelClass> modelRef, bo
         collectionArgs.modelRef = changedModelRef;
         collectionArgs.attr = args.attr;
         collectionArgs.value = args.value;
-        this->attributeChangedEvent.notifyListeners(collectionArgs);
+        this->attributeChangeEvent.notifyListeners(collectionArgs);
     }, this);
 
     // let's tell the world
@@ -138,6 +144,51 @@ void ofxCMS::BaseCollection<ModelClass>::add(shared_ptr<ModelClass> modelRef, bo
 
     // success!
     return;
+}
+
+template <class ModelClass>
+void ofxCMS::BaseCollection<ModelClass>::initialize(vector< map<string, string> > &_data){
+    // remove all existing data
+    destroy();
+
+    for(int i=0; i<_data.size(); i++){
+        auto newModel = make_shared<ModelClass>();
+        newModel->set(_data[i], false /* no individual model notification */);
+    }
+
+    initializeEvent.notifyListeners(*this);
+}
+
+template <class ModelClass>
+shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::previous(shared_ptr<ModelClass> model, bool wrap){
+    int idx = indexOfCid(model->cid());
+
+    if(idx == INVALID_INDEX)
+        return nullptr;
+
+    if(idx > 0)
+        return at(idx-1);
+
+    if(wrap)
+        return at(size()-1);
+
+    return nullptr;
+}
+
+template <class ModelClass>
+shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::next(shared_ptr<ModelClass> model, bool wrap){
+    int idx = indexOfCid(model->cid());
+
+    if(idx == INVALID_INDEX)
+        return nullptr;
+
+    if(idx < size()-1)
+        return at(idx+1);
+
+    if(wrap)
+        return at(0);
+
+    return nullptr;
 }
 
 template <class ModelClass>
@@ -198,16 +249,25 @@ shared_ptr<ModelClass>  ofxCMS::BaseCollection<ModelClass>::remove(shared_ptr<Mo
 
 template <class ModelClass>
 shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::remove(int index, bool notify){
-    // find and remove
+    // find
     auto modelRef = at(index);
+
+    // verify
+    if(modelRef == nullptr){
+        ofLogWarning() << "couldn't find model with index: " << index;
+        return nullptr;
+    }
+
+    // remove callbacks
+    modelRef->attributeChangeEvent.removeListeners(this);
+    this->modelChangeEvent.stopForward(modelRef->changeEvent);
+
+    // remove
     modelRefs.erase(modelRefs.begin() + index);
 
     // notify
-    if(modelRef == nullptr){
-        ofLogWarning() << "couldn't find model with index: " << index;
-    } else if(notify){
-        modelRemovedEvent.notifyListeners(*modelRef.get());
-    }
+    if(notify)
+        modelRemoveEvent.notifyListeners(*modelRef.get());
 
     // return removed instance
     return modelRef;
