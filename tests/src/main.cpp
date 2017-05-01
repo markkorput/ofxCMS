@@ -152,11 +152,42 @@ class ofApp: public ofxUnitTestsApp{
             modelRef->set("foo101", "bar202");
         TEST_END
 
-        // modelRef = runCollection<ofxCMS::Collection<ofxCMS::Model>>();
-        //
-        // TEST_START(change attribute after collection was deallocated)
-        //     modelRef->set("foo303", "bar404");
-        // TEST_END
+        modelRef = runCollection<ofxCMS::Collection<ofxCMS::Model>>();
+
+        TEST_START(change attribute after collection was deallocated)
+            modelRef->set("foo303", "bar404");
+        TEST_END
+
+        TEST_START(limit)
+            auto colRef = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            // create five instance
+            colRef->create();
+            colRef->create();
+            colRef->create();
+            colRef->create();
+            colRef->create();
+            test_eq(colRef->at(4)->cid(), 5, "");
+
+            string removed = "";
+            colRef->modelRemoveEvent.addListener([&removed](ofxCMS::Model& model){
+                removed += "#"+ofToString(model.cid());
+            }, this);
+
+            colRef->limit(3);
+            test_eq(colRef->size(), 3, ""); // two models removed
+            test_eq(removed, "#5#4", ""); // remove callback invoked; last two models removed
+
+            colRef->create();
+            test_eq(colRef->size(), 3, ""); // nothing added (fifo is false by default)
+            test_eq(colRef->at(2)->cid(), 3, "");
+
+            colRef->setFifo(true);
+            colRef->create();
+            test_eq(colRef->size(), 3, ""); // nothing added (fifo is false by default)
+            test_eq(colRef->at(2)->cid(), 7, "");
+
+            colRef->modelRemoveEvent.removeListeners(this);
+        TEST_END
     }
 };
 
