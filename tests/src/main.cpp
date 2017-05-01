@@ -14,6 +14,7 @@ class ofApp: public ofxUnitTestsApp{
     shared_ptr<ofxCMS::Model> runCollection(){
         // create collection
         auto collectionRef = make_shared<CollectionClass>();
+        unsigned int cid;
 
         TEST_START(add)
             collectionRef->modelAddedEvent.addListener([](ofxCMS::Model& model){
@@ -31,8 +32,7 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(collectionRef->size(), 1, "");
             test_eq(modelRef->get("foo"), "barr52", "");
 
-            // default first id
-            test_eq(modelRef->cid(), 1, "");
+            cid = modelRef->cid();
             // get non existing attribute
             test_eq(modelRef->get("name"), "", "");
             // get non existing attribute with default value
@@ -63,27 +63,28 @@ class ofApp: public ofxUnitTestsApp{
             auto m = make_shared<ofxCMS::Model>();
             collectionRef->add(m);
             test_eq(collectionRef->size(), 2, "");
-            test_eq(m->cid(), 2, "");
+            test_eq(m->cid(), cid+1, "");
         TEST_END
 
         TEST_START(add existing model with cid)
             auto m = make_shared<ofxCMS::Model>();
-            m->setCid(8);
+            m->setCid(cid+20);
             collectionRef->add(m);
             test_eq(collectionRef->size(), 3, "");
-            test_eq(m->cid(), 8, "");
+            test_eq(m->cid(), cid+20, "");
         TEST_END
 
         TEST_START(check next cid)
             shared_ptr<ofxCMS::Model> model = collectionRef->create();
             test_eq(collectionRef->size(), 4, "");
-            test_eq(model->cid(), 9, "");
+            test_eq(model->cid(), cid+21, "");
         TEST_END
 
         TEST_START(find and remove)
             // find
-            auto model = collectionRef->find(8);
+            auto model = collectionRef->at(3);
             test_eq(model.use_count(), 2, "");
+
             // remove by reference
             model = collectionRef->remove(model);
             test_eq(model.use_count(), 1, ""); // local reference is last reference
@@ -99,7 +100,7 @@ class ofApp: public ofxUnitTestsApp{
         TEST_START(remove by index)
             auto model = collectionRef->remove(2);
             test_eq(collectionRef->size(), 2, "");
-            test_eq(model->cid(), 9, "");
+            test_eq(model->cid(), cid+20, "");
             test_eq(model.use_count(), 1, ""); // last reference
         TEST_END
 
@@ -147,6 +148,7 @@ class ofApp: public ofxUnitTestsApp{
 
     void run(){
         auto modelRef = runCollection<ofxCMS::BaseCollection<ofxCMS::Model>>();
+        unsigned int cid;
 
         TEST_START(change attribute after collection was deallocated)
             modelRef->set("foo101", "bar202");
@@ -166,7 +168,7 @@ class ofApp: public ofxUnitTestsApp{
             colRef->create();
             colRef->create();
             colRef->create();
-            test_eq(colRef->at(4)->cid(), 5, "");
+            cid = colRef->at(0)->cid();
 
             string removed = "";
             colRef->modelRemoveEvent.addListener([&removed](ofxCMS::Model& model){
@@ -175,16 +177,16 @@ class ofApp: public ofxUnitTestsApp{
 
             colRef->limit(3);
             test_eq(colRef->size(), 3, ""); // two models removed
-            test_eq(removed, "#5#4", ""); // remove callback invoked; last two models removed
+            test_eq(removed, "#"+ofToString(cid+4)+"#"+ofToString(cid+3), ""); // remove callback invoked; last two models removed
 
             colRef->create();
             test_eq(colRef->size(), 3, ""); // nothing added (fifo is false by default)
-            test_eq(colRef->at(2)->cid(), 3, "");
+            test_eq(colRef->at(2)->cid(), cid+2, "");
 
             colRef->setFifo(true);
             colRef->create();
             test_eq(colRef->size(), 3, ""); // nothing added (fifo is false by default)
-            test_eq(colRef->at(2)->cid(), 7, "");
+            test_eq(colRef->at(2)->cid(), cid+6, "");
 
             colRef->modelRemoveEvent.removeListeners(this);
         TEST_END
@@ -193,14 +195,72 @@ class ofApp: public ofxUnitTestsApp{
             auto colRefA = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
             auto colRefB = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
 
+            // initialize B with one model
             colRefB->create();
             test_eq(colRefB->size(), 1, "");
             test_eq(colRefA->size(), 0, "");
 
+            // sync operation transfers model to A
             colRefA->sync(colRefB, false /* sync once, don't monitor for changes */);
             test_eq(colRefB->size(), 1, "");
             test_eq(colRefA->size(), 1, "");
-            test_eq(colRefB->at(0).get(), colRefB->at(0).get(), "");
+            test_eq(colRefA->at(0).get(), colRefB->at(0).get(), "");
+
+            // sync is not active; A won't receive new models from B
+            colRefB->create();
+            test_eq(colRefB->size(), 2, "");
+            test_eq(colRefA->size(), 1, "");
+            test_eq(colRefA->at(0).get(), colRefB->at(0).get(), "");
+
+            // sync is not active; A won't drop models along with B
+            colRefB->remove(0);
+            test_eq(colRefB->size(), 1, "");
+            test_eq(colRefA->size(), 1, "");
+            test_eq(colRefA->at(0).get() == colRefB->at(0).get(), false, "");
+        TEST_END
+
+        TEST_START(sync active)
+            auto colRefA = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            auto colRefB = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+
+            // initialize B with one model
+            colRefB->create();
+            test_eq(colRefB->size(), 1, "");
+            test_eq(colRefA->size(), 0, "");
+
+            // sync operation transfers model to A
+            colRefA->sync(colRefB);
+            test_eq(colRefB->size(), 1, "");
+            test_eq(colRefA->size(), 1, "");
+            test_eq(colRefA->at(0).get(), colRefB->at(0).get(), "");
+
+            // active sync; A receives new models from B
+            colRefB->create();
+            test_eq(colRefB->size(), 2, "");
+            test_eq(colRefA->size(), 2, "");
+            test_eq(colRefA->at(1).get(), colRefB->at(1).get(), "");
+
+            // second sync source
+            auto colRefC = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            colRefC->create();
+            colRefC->create();
+            test_eq(colRefC->size(), 2, "");
+            colRefA->sync(colRefC);
+            test_eq(colRefA->size(), 4, "");
+
+            colRefC->create();
+            test_eq(colRefA->size(), 5, "");
+
+            // active sync; A drops models along with B
+            colRefB->remove(0);
+            colRefB->remove(0);
+            test_eq(colRefB->size(), 0, "");
+            test_eq(colRefA->size(), 3, "");
+
+            colRefC->remove(0);
+            colRefC->remove(0);
+            test_eq(colRefC->size(), 1, "");
+            test_eq(colRefA->size(), 1, "");
         TEST_END
     }
 };

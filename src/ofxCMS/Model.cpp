@@ -11,7 +11,7 @@
 
 using namespace ofxCMS;
 
-const int Model::INVALID_CID = -1;
+unsigned int Model::nextCid = 1;
 
 Model::Model() : mId(""), mCid(INVALID_CID){
 }

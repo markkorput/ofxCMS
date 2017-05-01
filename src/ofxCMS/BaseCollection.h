@@ -27,7 +27,6 @@ namespace ofxCMS {
 
             const static unsigned int NO_LIMIT = 0;
             const static unsigned int INVALID_INDEX = -1;
-            const static int INVALID_CID = -1;
 
             typedef FUNCTION<void(shared_ptr<ModelClass>)> ModelRefFunc;
 
@@ -40,7 +39,7 @@ namespace ofxCMS {
 
         public: // methods
 
-            BaseCollection() : mNextId(1){}
+            // BaseCollection(){}
             ~BaseCollection(){ destroy(); }
 
             void setup(vector< map<string, string> > &_data);
@@ -54,11 +53,12 @@ namespace ofxCMS {
             // CRUD - Read
             const vector<shared_ptr<ModelClass>> &models(){ return modelRefs; }
             shared_ptr<ModelClass> at(unsigned int idx);
-            shared_ptr<ModelClass> find(int cid){ return findByCid(cid); }
-            shared_ptr<ModelClass> findByCid(int cid);
+            shared_ptr<ModelClass> find(unsigned int cid){ return findByCid(cid); }
+            shared_ptr<ModelClass> findByCid(unsigned int cid);
 
             unsigned int size(){ return modelRefs.size(); }
             bool has(shared_ptr<ModelClass> model){ return indexOfCid(model->cid()) != INVALID_INDEX; }
+            bool has(int cid){ return indexOfCid(cid) != INVALID_INDEX; }
             int randomIndex(){ return size() == 0 ? INVALID_INDEX : floor(ofRandom(size())); }
             shared_ptr<ModelClass> random(){ return size() == 0 ? nullptr : at(randomIndex()); }
             shared_ptr<ModelClass> previous(shared_ptr<ModelClass> model, bool wrap=false);
@@ -69,11 +69,14 @@ namespace ofxCMS {
 
             // CRUD - Delete
             shared_ptr<ModelClass> remove(shared_ptr<ModelClass> model, bool notify=true);
+            shared_ptr<ModelClass> removeByCid(int cid, bool notify=true);
             shared_ptr<ModelClass> remove(int index, bool notify=true);
 
         private: // methods
 
-            int indexOfCid(int cid);
+            int indexOfCid(unsigned int cid);
+            unsigned int nextCid(){ return ModelClass::nextCid; }
+            void setNextCid(unsigned int newNextCid){ ModelClass::nextCid = newNextCid; }
 
         public: // events
 
@@ -85,7 +88,7 @@ namespace ofxCMS {
 
         private: // attributes
 
-            unsigned int mNextId;
+            // unsigned int mNextId;
             vector<shared_ptr<ModelClass>> modelRefs;
 
     };
@@ -118,13 +121,13 @@ void ofxCMS::BaseCollection<ModelClass>::add(shared_ptr<ModelClass> modelRef, bo
     }
 
     // make sure we have a valid CID
-    if(modelRef->cid() == INVALID_CID){
-        // ofLogNotice() << "nextId: " << mNextId;
-        modelRef->setCid(mNextId);
-        mNextId++;
-    } else if(modelRef->cid() >= mNextId){
+    if(modelRef->cid() == ModelClass::INVALID_CID){
+        // ofLogNotice() << "nextId: " << nextCid();
+        modelRef->setCid(nextCid());
+        setNextCid(nextCid()+1);
+    } else if(modelRef->cid() >= nextCid()){
         ofLogWarning() << "TODO: check if model with this cid doesn't already exist";
-        mNextId = modelRef->cid() + 1;
+        setNextCid(modelRef->cid() + 1);
     }
 
     // add to our collection
@@ -216,7 +219,7 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::at(unsigned int idx){
 }
 
 template <class ModelClass>
-shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::findByCid(int cid){
+shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::findByCid(unsigned int cid){
     int idx = indexOfCid(cid);
     if(idx == INVALID_INDEX)
         return nullptr;
@@ -225,7 +228,7 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::findByCid(int cid){
 
 
 template <class ModelClass>
-int ofxCMS::BaseCollection<ModelClass>::indexOfCid(int cid){
+int ofxCMS::BaseCollection<ModelClass>::indexOfCid(unsigned int cid){
     int idx=0;
 
     for(auto modelRef : modelRefs){
@@ -266,6 +269,18 @@ shared_ptr<ModelClass>  ofxCMS::BaseCollection<ModelClass>::remove(shared_ptr<Mo
     // didn't find it
 	ofLogWarning() << "couldn't find specified model to remove";
     return nullptr;
+}
+
+template <class ModelClass>
+shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::removeByCid(int cid, bool notify){
+    int idx = indexOfCid(cid);
+
+    if(idx == INVALID_INDEX){
+        ofLogWarning() << "could not find model to remove by cid";
+        return nullptr;
+    }
+
+    return remove(idx, notify);
 }
 
 template <class ModelClass>

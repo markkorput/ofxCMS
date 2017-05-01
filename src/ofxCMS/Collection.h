@@ -15,10 +15,10 @@ namespace ofxCMS {
         void setFifo(bool newFifo){ collectionLimit.setFifo(newFifo); }
 
         void sync(shared_ptr<Collection<ModelClass>> other, bool active=true);
-
+        void stopSync(shared_ptr<Collection<ModelClass>> other);
     private: // attributes
         CollectionLimit<ModelClass> collectionLimit;
-        CollectionSync<ModelClass> collectionSync;
+        std::vector<shared_ptr<CollectionSync<ModelClass>>> collectionSyncs;
     };
 }
 
@@ -29,5 +29,19 @@ void ofxCMS::Collection<ModelClass>::limit(unsigned int amount){
 
 template<class ModelClass>
 void ofxCMS::Collection<ModelClass>::sync(shared_ptr<Collection<ModelClass>> other, bool active){
-    collectionSync.setup(this, other.get(), active);
+    auto sync = make_shared<CollectionSync<ModelClass>>();
+    sync->setup(this, other, active);
+    collectionSyncs.push_back(sync);
+}
+
+template<class ModelClass>
+void ofxCMS::Collection<ModelClass>::stopSync(shared_ptr<Collection<ModelClass>> other){
+    for(auto it = collectionSyncs.begin(); it != collectionSyncs.end(); it++){
+        if(it->getSource() == other){
+            collectionSyncs.erase(it);
+            return;
+        }
+    }
+
+    ofLogWarning() << "Could not source to stop syncing from";
 }

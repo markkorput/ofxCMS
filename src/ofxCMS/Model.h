@@ -27,7 +27,9 @@ namespace ofxCMS {
         };
 
     public:
-        static const int INVALID_CID;
+
+        static const unsigned int INVALID_CID = 0;
+        static unsigned int nextCid;
         Model();
 
         Model* set(const string &attr, const string &value, bool notify = true);
@@ -36,9 +38,9 @@ namespace ofxCMS {
 
         string id() const { return get("id", get("_id", getId())); }
         string getId() const { return mId; }
-        void setCid(int newCid){ mCid = newCid; }
-        int cid() const { return mCid; }
-        int getCid() const { return mCid; }
+        void setCid(unsigned int newCid){ mCid = newCid; }
+        unsigned cid() const { return mCid; }
+        unsigned int getCid() const { return mCid; }
 
         map<string, string> &attributes(){ return _attributes; }
 
@@ -67,7 +69,7 @@ namespace ofxCMS {
         string mId;
 
         // cid (client-id, for local/internal use)
-        int mCid;
+        unsigned int mCid;
 
     }; // class Model
 
