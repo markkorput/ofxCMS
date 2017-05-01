@@ -38,12 +38,10 @@ void ofxCMS::CollectionSync<ModelClass>::setup(BaseCollection<ModelClass> *targe
 
     if(source && active){
         source->modelAddedEvent.addListener([this](ModelClass& model){
-            ofLog() << "add listener";
             this->sync();
         }, this);
 
         source->modelRemoveEvent.addListener([this](ModelClass& model){
-            ofLog() << "remove listener";
             if(this->target->has(model.cid()))
                 this->target->removeByCid(model.cid());
         }, this);
@@ -52,9 +50,7 @@ void ofxCMS::CollectionSync<ModelClass>::setup(BaseCollection<ModelClass> *targe
 
 template<class ModelClass>
 void ofxCMS::CollectionSync<ModelClass>::destroy(){
-    ofLog() << "CollectionSync::destroy";
     if(source){
-        ofLog() << "CollectionSync::destroy - got source";
         source->modelAddedEvent.removeListeners(this);
         source->modelRemoveEvent.removeListeners(this);
         source = NULL;

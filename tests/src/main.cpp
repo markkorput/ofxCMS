@@ -152,12 +152,14 @@ class ofApp: public ofxUnitTestsApp{
 
         TEST_START(change attribute after collection was deallocated)
             modelRef->set("foo101", "bar202");
+            test_eq(modelRef.use_count(), 1, "");
         TEST_END
 
         modelRef = runCollection<ofxCMS::Collection<ofxCMS::Model>>();
 
         TEST_START(change attribute after collection was deallocated)
             modelRef->set("foo303", "bar404");
+            test_eq(modelRef.use_count(), 1, "");
         TEST_END
 
         TEST_START(limit)
