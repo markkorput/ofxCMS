@@ -34,11 +34,11 @@ namespace ofxCMS {
             class Modification {
                 public:
                     shared_ptr<ModelClass> addRef;
-                    int removeIndex;
+                    unsigned int removeCid;
                     bool notify;
-                    Modification() : addRef(nullptr), removeIndex(INVALID_INDEX), notify(true){}
-                    Modification(shared_ptr<ModelClass> ref, bool _notify=true) : addRef(ref), removeIndex(INVALID_INDEX), notify(_notify){}
-                    Modification(int idx, bool _notify=true) : addRef(nullptr), removeIndex(idx), notify(_notify){}
+                    Modification() : addRef(nullptr), removeCid(ModelClass::INVALID_CID), notify(true){}
+                    Modification(shared_ptr<ModelClass> ref, bool _notify=true) : addRef(ref), removeCid(ModelClass::INVALID_CID), notify(_notify){}
+                    Modification(int cid, bool _notify=true) : addRef(nullptr), removeCid(cid), notify(_notify){}
             };
 
         public: // methods
@@ -74,7 +74,7 @@ namespace ofxCMS {
             // CRUD - Delete
             shared_ptr<ModelClass> remove(shared_ptr<ModelClass> model, bool notify=true);
             shared_ptr<ModelClass> removeByCid(int cid, bool notify=true);
-            shared_ptr<ModelClass> remove(int index, bool notify=true);
+            shared_ptr<ModelClass> remove(unsigned int index, bool notify=true);
 
         private: // methods
 
@@ -281,7 +281,7 @@ void ofxCMS::BaseCollection<ModelClass>::each(ModelRefFunc func){
         if(modification->addRef){
             add(modification->addRef, modification->notify);
         } else {
-            remove(modification->removeIndex, modification->notify);
+            removeByCid(modification->removeCid, modification->notify);
         }
     }
 
@@ -289,31 +289,24 @@ void ofxCMS::BaseCollection<ModelClass>::each(ModelRefFunc func){
 }
 
 template <class ModelClass>
-shared_ptr<ModelClass>  ofxCMS::BaseCollection<ModelClass>::remove(shared_ptr<ModelClass> model, bool notify){
-    if(model == nullptr){
+shared_ptr<ModelClass>  ofxCMS::BaseCollection<ModelClass>::remove(shared_ptr<ModelClass> modelRef, bool notify){
+    if(modelRef == nullptr){
         ofLogWarning() << "got NULL parameter";
         return nullptr;
     }
 
     // find index and remove by index
-    int i=0;
-    for(auto modelRef : modelRefs){
-        if(modelRef == nullptr){ // this should be impossible but has been ocurring during debugging
-            ofLogError() << "got (impossible?) nullptr from models vector for index: " << i;
-        } else if(model->equals(modelRef)){
-            return remove(i, notify);
-        }
-
-        i++;
-    }
-
-    // didn't find it
-	ofLogWarning() << "couldn't find specified model to remove";
-    return nullptr;
+    return removeByCid(modelRef->cid());
 }
 
 template <class ModelClass>
 shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::removeByCid(int cid, bool notify){
+    // vector being iterated over? schedule removal operation for when iteration is done
+    if(isIterating()){
+        operationsQueue.push_back(make_shared<Modification>(cid, notify));
+        return nullptr;
+    }
+
     int idx = indexOfCid(cid);
 
     if(idx == INVALID_INDEX){
@@ -321,32 +314,15 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::removeByCid(int cid, 
         return nullptr;
     }
 
-    return remove(idx, notify);
-}
-
-template <class ModelClass>
-shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::remove(int index, bool notify){
-    // vector being iterated over? schedule removal operation for when iteration is done
-    if(isIterating()){
-        operationsQueue.push_back(make_shared<Modification>(index, notify));
-        return nullptr;
-    }
-
     // find
-    auto modelRef = at(index);
-
-    // verify
-    if(modelRef == nullptr){
-        ofLogWarning() << "couldn't find model with index: " << index;
-        return nullptr;
-    }
+    auto modelRef = at(idx);
 
     // remove callbacks
     modelRef->attributeChangeEvent.removeListeners(this);
     this->modelChangeEvent.stopForward(modelRef->changeEvent);
 
     // remove
-    modelRefs.erase(modelRefs.begin() + index);
+    modelRefs.erase(modelRefs.begin() + idx);
 
     // notify
     if(notify)
@@ -354,4 +330,18 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::remove(int index, boo
 
     // return removed instance
     return modelRef;
+}
+
+template <class ModelClass>
+shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::remove(unsigned int index, bool notify){
+    auto modelRef = at(index);
+
+    // check
+    if(modelRef == nullptr){
+        ofLogWarning() << "couldn't find model with index: " << index;
+        return nullptr;
+    }
+
+    // invoke main remove routine
+    return remove(modelRef->cid(), notify);
 }
