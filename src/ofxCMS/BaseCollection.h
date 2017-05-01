@@ -8,13 +8,7 @@
 
 #pragma once
 
-#ifdef OFXCMS_USE_TR1
-	#include <tr1/functional>
-	#define FUNCTION tr1::function
-#else
-	#include <functional>
-	#define FUNCTION std::function
-#endif
+#include "lib/Middleware.h"
 
 // BaseCollection is a "core-essential" base class for the main Collection class.
 // BaseCollection only implement the bare basics of creating, adding, update and removing items.
@@ -37,9 +31,19 @@ namespace ofxCMS {
                 string value;
             };
 
+            class Modification {
+                public:
+                    shared_ptr<ModelClass> addRef;
+                    int removeIndex;
+                    bool notify;
+                    Modification() : addRef(nullptr), removeIndex(INVALID_INDEX), notify(true){}
+                    Modification(shared_ptr<ModelClass> ref, bool _notify=true) : addRef(ref), removeIndex(INVALID_INDEX), notify(_notify){}
+                    Modification(int idx, bool _notify=true) : addRef(nullptr), removeIndex(idx), notify(_notify){}
+            };
+
         public: // methods
 
-            // BaseCollection(){}
+            BaseCollection() : nestedRefIteratorsCount(0){}
             ~BaseCollection(){ destroy(); }
 
             void setup(vector< map<string, string> > &_data);
@@ -77,25 +81,33 @@ namespace ofxCMS {
             int indexOfCid(unsigned int cid);
             unsigned int nextCid(){ return ModelClass::nextCid; }
             void setNextCid(unsigned int newNextCid){ ModelClass::nextCid = newNextCid; }
+            bool isIterating() const { return nestedRefIteratorsCount > 0; }
 
         public: // events
 
+            Middleware<ofxCMS::Model> beforeAdd;
             LambdaEvent<ModelClass> modelAddedEvent;
             LambdaEvent<BaseCollection<ModelClass>> initializeEvent;
             LambdaEvent<ModelClass> modelChangeEvent;
             LambdaEvent<AttrChangeArgs> attributeChangeEvent;
-            LambdaEvent <ModelClass> modelRemoveEvent;
+            LambdaEvent<ModelClass> modelRemoveEvent;
 
         private: // attributes
 
             // unsigned int mNextId;
-            vector<shared_ptr<ModelClass>> modelRefs;
-
+            std::vector<shared_ptr<ModelClass>> modelRefs;
+            unsigned int nestedRefIteratorsCount;
+            std::vector<shared_ptr<Modification>> operationsQueue;
     };
 }
 
 template <class ModelClass>
 void ofxCMS::BaseCollection<ModelClass>::destroy(){
+    if(isIterating()){ // unlikely
+        ofLogWarning() << "shouldn't destroy collection while it's being iterated over, aborting destroy";
+        return;
+    }
+
     for(int i=modelRefs.size()-1; i>=0; i--){
         remove(i, false /* don't notify */);
     }
@@ -114,6 +126,12 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::create(){
 
 template <class ModelClass>
 void ofxCMS::BaseCollection<ModelClass>::add(shared_ptr<ModelClass> modelRef, bool notify){
+    // vector being iterated over? schedule removal operation for when iteration is done
+    if(isIterating()){
+        operationsQueue.push_back(make_shared<Modification>(modelRef, notify));
+        return;
+    }
+
     if(modelRef == nullptr){
         // What the hell are we supposed to do with this??
         ofLogWarning() << "got nullptr model to add to collection";
@@ -129,6 +147,9 @@ void ofxCMS::BaseCollection<ModelClass>::add(shared_ptr<ModelClass> modelRef, bo
         ofLogWarning() << "TODO: check if model with this cid doesn't already exist";
         setNextCid(modelRef->cid() + 1);
     }
+
+    if(!beforeAdd(*modelRef.get()))
+        return;
 
     // add to our collection
     modelRefs.push_back(modelRef);
@@ -242,9 +263,29 @@ int ofxCMS::BaseCollection<ModelClass>::indexOfCid(unsigned int cid){
 
 template <class ModelClass>
 void ofxCMS::BaseCollection<ModelClass>::each(ModelRefFunc func){
+    nestedRefIteratorsCount++;
+
     for(auto modelRef : modelRefs){
         func(modelRef);
     }
+
+    nestedRefIteratorsCount--;
+
+    // still (recursively) iterating over our vector? skip processing opereations queue
+    if(isIterating())
+        return;
+
+    // after we're done iterating, we should process any items
+    // accumulated in the vector modificaton queue
+    for(auto modification : operationsQueue){
+        if(modification->addRef){
+            add(modification->addRef, modification->notify);
+        } else {
+            remove(modification->removeIndex, modification->notify);
+        }
+    }
+
+    operationsQueue.clear();
 }
 
 template <class ModelClass>
@@ -285,6 +326,12 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::removeByCid(int cid, 
 
 template <class ModelClass>
 shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::remove(int index, bool notify){
+    // vector being iterated over? schedule removal operation for when iteration is done
+    if(isIterating()){
+        operationsQueue.push_back(make_shared<Modification>(index, notify));
+        return nullptr;
+    }
+
     // find
     auto modelRef = at(index);
 
