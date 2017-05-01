@@ -66,27 +66,31 @@ class ofApp: public ofxUnitTestsApp{
 
         // add another model; gets the next cid (following the previous model's cid)
         {
-            shared_ptr<ofxCMS::Model> m = collectionRef->create();
+            shared_ptr<ofxCMS::Model> model = collectionRef->create();
             test_eq(collectionRef->size(), 4, "");
-            test_eq(m->cid(), 9, "");
+            test_eq(model->cid(), 9, "");
         }
 
-        // find and remove
-        auto m = collectionRef->find(8);
-        ofLog() << "TODO: test shared_ptr ref count";
-        auto m2 = collectionRef->remove(m);
-        test_eq(m == m2, true, "");
-        ofLog() << "TODO: test shared_ptr ref count";
-        test_eq(collectionRef->size(), 3, "");
-        auto m3 = collectionRef->remove(3);
-        test_eq((m3 == nullptr), true, "");
-        test_eq(collectionRef->size(), 3, "");
-        m3 = collectionRef->remove(2);
-        test_eq((m3 == nullptr), false, "");
-        test_eq(collectionRef->size(), 2, "");
-        test_eq(m3->cid(), 9, "");
-        ofLog() << "TODO: test shared_ptr ref count";
 
+        {   // find and reference count
+            auto model = collectionRef->find(8);
+            test_eq(model.use_count(), 2, "");
+            // remove by reference
+            model = collectionRef->remove(model);
+            test_eq(model.use_count(), 1, ""); // local reference is last reference
+            test_eq(collectionRef->size(), 3, "");
+        }
+        {   // remove with invalid index
+            auto model = collectionRef->remove(3);
+            test_eq(model == nullptr, true, "");
+            test_eq(collectionRef->size(), 3, "");
+        }
+        {   // remove by index
+            auto model = collectionRef->remove(2);
+            test_eq(collectionRef->size(), 2, "");
+            test_eq(model->cid(), 9, "");
+            test_eq(model.use_count(), 1, ""); // last reference
+        }
     }
 };
 
