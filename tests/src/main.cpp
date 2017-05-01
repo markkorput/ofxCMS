@@ -108,7 +108,24 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(collectionRef->size(), 0, "");
         TEST_END
 
-        ofLog() << "TODO: BaseCollection::initialize and initializeEvent";
+        TEST_START(initialize and each)
+            collectionRef->create();
+            test_eq(collectionRef->size(), 1, "");
+
+            std::vector<std::map<string, string>> data;
+            std::map<string, string> m;
+            m["number"] = "one";
+            data.push_back(m);
+            m["number"] = "two";
+            data.push_back(m);
+
+            collectionRef->initializeEvent.addListener([this](ofxCMS::BaseCollection<ofxCMS::Model> collection){
+                // TODO
+            }, this);
+            collectionRef->initialize(data);
+            test_eq(collectionRef->size(), 2, "");
+        TEST_END
+
         ofLog() << "TODO: BaseCollection::previous/next";
 
         // return an instance
@@ -118,9 +135,9 @@ class ofApp: public ofxUnitTestsApp{
     void run(){
         auto modelRef = runCollection<ofxCMS::BaseCollection<ofxCMS::Model>>();
 
-        // TEST_START(change attribute after collection was deallocated)
-        //     modelRef->set("foo101", "bar202");
-        // TEST_END
+        TEST_START(change attribute after collection was deallocated)
+            modelRef->set("foo101", "bar202");
+        TEST_END
 
         // modelRef = runCollection<ofxCMS::Collection<ofxCMS::Model>>();
         //

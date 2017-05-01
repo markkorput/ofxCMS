@@ -39,7 +39,7 @@ namespace ofxCMS {
             // CRUD - Create
             shared_ptr<ModelClass> create();
             void add(shared_ptr<ModelClass> modelRef, bool notify=true);
-            void initialize(vector< map<string, string> > &_data);
+            void initialize(vector<map<string, string>>& _data);
 
             unsigned int size(){ return modelRefs.size(); }
             int randomIndex(){ return size() == 0 ? INVALID_INDEX : floor(ofRandom(size())); }
@@ -79,14 +79,11 @@ namespace ofxCMS {
 
 template <class ModelClass>
 void ofxCMS::BaseCollection<ModelClass>::destroy(){
-    ofLog() << "destroy";
     for(int i=modelRefs.size()-1; i>=0; i--){
-        ofLog() << "- " << i;
         remove(i, false /* don't notify */);
     }
-    ofLog() << "clear";
-    // modelRefs.clear();
-    ofLog() << "cleardone";
+
+    modelRefs.clear();
 }
 
 template <class ModelClass>
@@ -147,15 +144,18 @@ void ofxCMS::BaseCollection<ModelClass>::add(shared_ptr<ModelClass> modelRef, bo
 }
 
 template <class ModelClass>
-void ofxCMS::BaseCollection<ModelClass>::initialize(vector< map<string, string> > &_data){
+void ofxCMS::BaseCollection<ModelClass>::initialize(vector<map<string, string>>& _data){
     // remove all existing data
     destroy();
 
+    // create and add models
     for(int i=0; i<_data.size(); i++){
         auto newModel = make_shared<ModelClass>();
         newModel->set(_data[i], false /* no individual model notification */);
+        add(newModel);
     }
 
+    // notify
     initializeEvent.notifyListeners(*this);
 }
 
