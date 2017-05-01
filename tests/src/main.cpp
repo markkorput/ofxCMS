@@ -188,6 +188,20 @@ class ofApp: public ofxUnitTestsApp{
 
             colRef->modelRemoveEvent.removeListeners(this);
         TEST_END
+
+        TEST_START(sync once)
+            auto colRefA = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            auto colRefB = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+
+            colRefB->create();
+            test_eq(colRefB->size(), 1, "");
+            test_eq(colRefA->size(), 0, "");
+
+            colRefA->sync(colRefB, false /* sync once, don't monitor for changes */);
+            test_eq(colRefB->size(), 1, "");
+            test_eq(colRefA->size(), 1, "");
+            test_eq(colRefB->at(0).get(), colRefB->at(0).get(), "");
+        TEST_END
     }
 };
 

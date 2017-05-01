@@ -58,6 +58,7 @@ namespace ofxCMS {
             shared_ptr<ModelClass> findByCid(int cid);
 
             unsigned int size(){ return modelRefs.size(); }
+            bool has(shared_ptr<ModelClass> model){ return indexOfCid(model->cid()) != INVALID_INDEX; }
             int randomIndex(){ return size() == 0 ? INVALID_INDEX : floor(ofRandom(size())); }
             shared_ptr<ModelClass> random(){ return size() == 0 ? nullptr : at(randomIndex()); }
             shared_ptr<ModelClass> previous(shared_ptr<ModelClass> model, bool wrap=false);
