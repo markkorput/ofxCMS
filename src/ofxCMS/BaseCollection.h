@@ -23,7 +23,7 @@ namespace ofxCMS {
 
             // used in attributeChangeEvent notifications
             struct AttrChangeArgs {
-                shared_ptr<Model> modelRef;
+                shared_ptr<ModelClass> modelRef;
                 string attr;
                 string value;
             };

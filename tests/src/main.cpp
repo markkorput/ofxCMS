@@ -38,13 +38,13 @@ class ofApp: public ofxUnitTestsApp{
             args.model->set(args.attr, args.model->get(args.attr) + " (Model Callback OK)", false /* dony notify */);
         }, this);
 
-        // collectionRef->attributeChangedEvent.addListener([](ofxCMS::Collection::AttrChangeArgs& args) -> void {
-        //     args.model->set(args.attr, args.model->get(args.attr) + " (Collection Callback OK)", false /* dony notify */);
-        // }, this);
+        collectionRef->attributeChangedEvent.addListener([](ofxCMS::BaseCollection<ofxCMS::Model>::AttrChangeArgs& args) -> void {
+            args.modelRef->set(args.attr, args.modelRef->get(args.attr) + " (Collection Callback OK)", false /* dony notify */);
+        }, this);
 
         // set name and trigger callback(s)
         modelRef->set("name", "Brian Fury");
-        test_eq(modelRef->get("name"), "Brian Fury (Model Callback OK) (Collection Callback OK)", "");
+        test_eq(modelRef->get("name"), "Brian Fury (Collection Callback OK) (Model Callback OK)", "");
 
 
         // add an existing external model without cid; gets assign a cid
