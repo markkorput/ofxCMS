@@ -6,24 +6,15 @@
 //
 //
 
-#include "CMSModel.h"
+#include "Model.h"
 #include "ofxJSONElement.h"
 
-#define INVALID_CID (-1)
+using namespace ofxCMS;
 
-using namespace CMS;
+unsigned int Model::nextCid = 1;
 
-int Model::mCidCounter = 0;
-
-Model::Model(){
-    // TODO: use a more globally unique timestamp-based Cid format?
-    mCid = "c"+ofToString(mCidCounter);
-    mCidCounter++;
+Model::Model() : mId(""), mCid(INVALID_CID){
 }
-
-// Model::~Model(){
-//     ofNotifyEvent(beforeDestroyEvent, *this, this);
-// }
 
 Model* Model::set(const string &attr, const string &value, bool notify){
     string old_value = _attributes[attr];
@@ -31,13 +22,17 @@ Model* Model::set(const string &attr, const string &value, bool notify){
     _attributes[attr] = value;
     onSetAttribute(attr, value);
 
-    if(old_value != value){
+    if(notify && old_value != value){
         static AttrChangeArgs args;
         args.model = this;
         args.attr = attr;
         args.value = value;
         onAttributeChanged(attr, value, old_value);
-        ofNotifyEvent(attributeChangedEvent, args, this);
+
+        if(notify){
+            changeEvent.notifyListeners(*this);
+            attributeChangeEvent.notifyListeners(args);
+        }
     }
 
     // returning `this` allows the caller to link operations, like so:
@@ -46,33 +41,16 @@ Model* Model::set(const string &attr, const string &value, bool notify){
 }
 
 
-Model* Model::set(map<string, string> &attrs){
+Model* Model::set(map<string, string> &attrs, bool notify){
     for(map<string, string>::iterator it=attrs.begin(); it != attrs.end(); it++){
-        this->set(it->first, it->second);
+        this->set(it->first, it->second, notify);
     }
 
 	return this;
 }
 
-string Model::get(const string &attr, string _default){
-    return (_attributes.find(attr) == _attributes.end()) ? _default : _attributes[attr];
-}
-
-string Model::cid(){
-    return mCid;
-}
-
-string Model::id(){
-    // look for an "id" attribute, if that's not present,
-    // look for an "_id" attribute (mongoDB style), if that's not present,
-    // grab the cid()
-    return get("id", get("_id", cid()));
-}
-
-//// this was causing SIGABRT exceptions...
-void Model::destroy(bool notify){
-   if(notify) ofNotifyEvent(beforeDestroyEvent, *this, this);
-   // delete this; // this is causing issues (on windows) and one might consider "delete this" a bad paradigm...
+string Model::get(const string &attr, string _default) const {
+    return (_attributes.find(attr) == _attributes.end()) ? _default : _attributes.at(attr);
 }
 
 // Convenience method with built-in support for MongoDB-style id format
@@ -89,16 +67,16 @@ vector<string> Model::jsonArrayToStringVector(string jsonText){
         ofLogWarning() << "Couldn't parse json: " << jsonText;
         return ids;
     }
-    
+
     if(!json.isArray()){
         ofLogWarning() << "ObjectModel's personas attribute is not an array: " << jsonText;
         return ids;
     }
-    
+
     // loop over each value in json array and add it to our ids vector
     for(int i=0; i<json.size(); i++){
         // mongoDB-style id
-        if(json[i].isObject() && json[i]["$oid"] != NULL && json[i]["$oid"].isString()){
+        if(json[i].isObject() && !json[i]["$oid"].isNull() && json[i]["$oid"].isString()){
             ids.push_back(json[i]["$oid"].asString());
             // simple string id
         } else if(json[i].isString()){
