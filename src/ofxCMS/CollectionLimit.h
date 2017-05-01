@@ -59,6 +59,6 @@ void ofxCMS::CollectionLimit<ModelClass>::destroy(){
 template<class ModelClass>
 void ofxCMS::CollectionLimit<ModelClass>::enforce(){
     while(limitExceeded()){
-        collection->remove(bFifo ? 0 : collection->size()-1);
+        collection->removeByIndex(bFifo ? 0 : collection->size()-1);
     }
 }

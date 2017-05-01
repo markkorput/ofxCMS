@@ -74,7 +74,7 @@ namespace ofxCMS {
             // CRUD - Delete
             shared_ptr<ModelClass> remove(shared_ptr<ModelClass> model, bool notify=true);
             shared_ptr<ModelClass> removeByCid(int cid, bool notify=true);
-            shared_ptr<ModelClass> remove(unsigned int index, bool notify=true);
+            shared_ptr<ModelClass> removeByIndex(unsigned int index, bool notify=true);
 
         private: // methods
 
@@ -109,7 +109,7 @@ void ofxCMS::BaseCollection<ModelClass>::destroy(){
     }
 
     for(int i=modelRefs.size()-1; i>=0; i--){
-        remove(i, false /* don't notify */);
+        removeByIndex(i);
     }
 
     modelRefs.clear();
@@ -189,7 +189,7 @@ void ofxCMS::BaseCollection<ModelClass>::initialize(vector<map<string, string>>&
     // create and add models
     for(int i=0; i<_data.size(); i++){
         auto newModel = make_shared<ModelClass>();
-        newModel->set(_data[i], false /* no individual model notification */);
+        newModel->set(_data[i]);
         add(newModel);
     }
 
@@ -333,7 +333,7 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::removeByCid(int cid, 
 }
 
 template <class ModelClass>
-shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::remove(unsigned int index, bool notify){
+shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::removeByIndex(unsigned int index, bool notify){
     auto modelRef = at(index);
 
     // check
@@ -343,5 +343,5 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::remove(unsigned int i
     }
 
     // invoke main remove routine
-    return remove(modelRef->cid(), notify);
+    return removeByCid(modelRef->cid(), notify);
 }

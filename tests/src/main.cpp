@@ -141,13 +141,13 @@ class ofApp: public ofxUnitTestsApp{
         TEST_END
 
         TEST_START(remove with invalid index)
-            auto model = collectionRef->remove(3);
+            auto model = collectionRef->removeByIndex(3);
             test_eq(model == nullptr, true, "");
             test_eq(collectionRef->size(), 3, "");
         TEST_END
 
         TEST_START(remove by index)
-            auto model = collectionRef->remove(2);
+            auto model = collectionRef->removeByIndex(2);
             test_eq(collectionRef->size(), 2, "");
             test_eq(model->cid(), cid+20, "");
             test_eq(model.use_count(), 1, ""); // last reference
@@ -266,7 +266,7 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(colRefA->at(0).get(), colRefB->at(0).get(), "");
 
             // sync is not active; A won't drop models along with B
-            colRefB->remove(0);
+            colRefB->removeByIndex(0);
             test_eq(colRefB->size(), 1, "");
             test_eq(colRefA->size(), 1, "");
             test_eq(colRefA->at(0).get() == colRefB->at(0).get(), false, "");
@@ -305,13 +305,13 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(colRefA->size(), 5, "");
 
             // active sync; A drops models along with B
-            colRefB->remove(0);
-            colRefB->remove(0);
+            colRefB->removeByIndex(0);
+            colRefB->removeByIndex(0);
             test_eq(colRefB->size(), 0, "");
             test_eq(colRefA->size(), 3, "");
 
-            colRefC->remove(0);
-            colRefC->remove(0);
+            colRefC->removeByIndex(0);
+            colRefC->removeByIndex(0);
             test_eq(colRefC->size(), 1, "");
             test_eq(colRefA->size(), 1, "");
         TEST_END
@@ -337,6 +337,28 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(colRefA->at(1)->get("Age"), "", "");
         TEST_END
 
+        TEST_START(filter actively on specific value)
+            auto colRefA = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            // add three models with different age values
+            auto modelRef = colRefA->create();
+            modelRef->set("Age", "12");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "25");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "31");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "46");
+            // filter on specific age value
+            colRefA->filter("Age", "31"); // enable perform active filter
+            test_eq(colRefA->size(), 1, "");
+            test_eq(colRefA->at(0)->get("Age"), "31", "");
+            // add new model
+            modelRef = colRefA->create();
+            test_eq(colRefA->size(), 1, "");
+            modelRef->set("Age", "31");
+            colRefA->add(modelRef);
+            test_eq(colRefA->size(), 2, "");
+        TEST_END
         // TEST_START(filter actively on specific value)
         //     auto colRefA = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
         //     // add three models with different age values

@@ -56,8 +56,8 @@ template<class ModelClass>
 void ofxCMS::Collection<ModelClass>::filter(const string& attr, const string& value, bool active){
     auto filter = make_shared<CollectionFilter<ModelClass>>();
     filter->setup(this, attr, value);
-    //
-    // // if active; save filter so it doesn't auto-destruct (since it's a shared_ptr)
-    // if(active)
-    //     collectionFilters.push_back(filter);
+
+    // if active; save filter so it doesn't auto-destruct (since it's a shared_ptr)
+    if(active)
+        collectionFilters.push_back(filter);
 }
