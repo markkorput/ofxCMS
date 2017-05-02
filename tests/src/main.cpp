@@ -458,6 +458,33 @@ class ofApp: public ofxUnitTestsApp{
             modelRef->set("Age", "36");
             test_eq(colRefA->size(), 3, ""); // not automatically re-added again, once its gone, need to re-add explicitly
         TEST_END
+
+        TEST_START(combine filter sync and limit)
+            auto colRefA = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            auto colRefB = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            auto modelRef = colRefB->create();
+            modelRef->set("value", "10");
+            modelRef = colRefB->create();
+            modelRef->set("value", "20");
+            modelRef = colRefB->create();
+            modelRef->set("value", "30");
+            modelRef = colRefB->create();
+            modelRef->set("value", "40");
+            modelRef = colRefB->create();
+            modelRef->set("value", "50");
+            colRefA->filter([](ofxCMS::Model& model){
+                return ofToInt(model.get("value", "0")) >= 30;
+            });
+            colRefA->sync(colRefB);
+            test_eq(colRefA->size(), 3, "");
+            test_eq(colRefB->size(), 5, "");
+            modelRef = colRefB->create();
+            test_eq(colRefA->size(), 3, "");
+            test_eq(colRefB->size(), 6, "");
+            modelRef->set("value", "60");
+            test_eq(colRefA->size(), 4, "");
+            test_eq(colRefB->size(), 6, "");
+        TEST_END
     }
 };
 
