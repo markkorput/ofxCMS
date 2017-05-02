@@ -22,6 +22,7 @@ namespace ofxCMS {
         void stopSync(shared_ptr<Collection<ModelClass>> other);
 
         void filter(const string& attr, const string& value, bool active=true);
+        void reject(const string& attr, const string& value, bool active=true);
         void filter(FilterFunctor func, bool active=true);
 
     private: // attributes
@@ -40,7 +41,7 @@ template<class ModelClass>
 void ofxCMS::Collection<ModelClass>::sync(shared_ptr<Collection<ModelClass>> other, bool active){
     auto sync = make_shared<CollectionSync<ModelClass>>();
     sync->setup(this, other, active);
-    ofLogWarning() << "implement active by not saving shared_ptr";
+    ofLogWarning() << "TODO: implement active by not saving shared_ptr";
     collectionSyncs.push_back(sync);
 }
 
@@ -60,6 +61,16 @@ template<class ModelClass>
 void ofxCMS::Collection<ModelClass>::filter(const string& attr, const string& value, bool active){
     auto filter = make_shared<CollectionFilter<ModelClass>>();
     filter->setup(this, attr, value);
+
+    // if active; save filter so it doesn't auto-destruct (since it's a shared_ptr)
+    if(active)
+        collectionFilters.push_back(filter);
+}
+
+template<class ModelClass>
+void ofxCMS::Collection<ModelClass>::reject(const string& attr, const string& value, bool active){
+    auto filter = make_shared<CollectionFilter<ModelClass>>();
+    filter->setup(this, attr, value, false);
 
     // if active; save filter so it doesn't auto-destruct (since it's a shared_ptr)
     if(active)

@@ -22,6 +22,7 @@ namespace ofxCMS {
             const static unsigned int NO_LIMIT = 0;
             const static unsigned int INVALID_INDEX = -1;
 
+            typedef FUNCTION<void(void)> LockFunctor;
             typedef FUNCTION<void(shared_ptr<ModelClass>)> ModelRefFunc;
 
             // used in attributeChangeEvent notifications
@@ -43,7 +44,7 @@ namespace ofxCMS {
 
         public: // methods
 
-            BaseCollection() : nestedRefIteratorsCount(0){}
+            BaseCollection() : vectorLockCount(0){}
             ~BaseCollection(){ destroy(); }
 
             void setup(vector< map<string, string> > &_data);
@@ -81,7 +82,8 @@ namespace ofxCMS {
             int indexOfCid(unsigned int cid);
             unsigned int nextCid(){ return ModelClass::nextCid; }
             void setNextCid(unsigned int newNextCid){ ModelClass::nextCid = newNextCid; }
-            bool isIterating() const { return nestedRefIteratorsCount > 0; }
+            bool isLocked() const { return vectorLockCount > 0; }
+            void lock(LockFunctor func);
 
         public: // events
 
@@ -96,14 +98,14 @@ namespace ofxCMS {
 
             // unsigned int mNextId;
             std::vector<shared_ptr<ModelClass>> modelRefs;
-            unsigned int nestedRefIteratorsCount;
+            unsigned int vectorLockCount;
             std::vector<shared_ptr<Modification>> operationsQueue;
     };
 }
 
 template <class ModelClass>
 void ofxCMS::BaseCollection<ModelClass>::destroy(){
-    if(isIterating()){ // unlikely
+    if(isLocked()){ // unlikely
         ofLogWarning() << "shouldn't destroy collection while it's being iterated over, aborting destroy";
         return;
     }
@@ -127,7 +129,7 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::create(){
 template <class ModelClass>
 void ofxCMS::BaseCollection<ModelClass>::add(shared_ptr<ModelClass> modelRef, bool notify){
     // vector being iterated over? schedule removal operation for when iteration is done
-    if(isIterating()){
+    if(isLocked()){
         operationsQueue.push_back(make_shared<Modification>(modelRef, notify));
         return;
     }
@@ -155,7 +157,13 @@ void ofxCMS::BaseCollection<ModelClass>::add(shared_ptr<ModelClass> modelRef, bo
     modelRefs.push_back(modelRef);
 
     // register callbacks (unregistered in .remove)
-    this->modelChangeEvent.forward(modelRef->changeEvent);
+    modelRef->changeEvent.addListener([this](ModelClass& model){
+        // we lock the vector, so modelChangeEvent listeners can safely
+        // invoke remove operations without risking errors
+        lock([&](){
+            this->modelChangeEvent.notifyListeners(model);
+        });
+    }, this);
 
     modelRef->attributeChangeEvent.addListener([this](ofxCMS::Model::AttrChangeArgs& args) -> void {
         // turn regular pointer into a shared_ptr (Ref) by looking it up in our internal ref list
@@ -263,29 +271,11 @@ int ofxCMS::BaseCollection<ModelClass>::indexOfCid(unsigned int cid){
 
 template <class ModelClass>
 void ofxCMS::BaseCollection<ModelClass>::each(ModelRefFunc func){
-    nestedRefIteratorsCount++;
-
-    for(auto modelRef : modelRefs){
-        func(modelRef);
-    }
-
-    nestedRefIteratorsCount--;
-
-    // still (recursively) iterating over our vector? skip processing opereations queue
-    if(isIterating())
-        return;
-
-    // after we're done iterating, we should process any items
-    // accumulated in the vector modificaton queue
-    for(auto modification : operationsQueue){
-        if(modification->addRef){
-            add(modification->addRef, modification->notify);
-        } else {
-            removeByCid(modification->removeCid, modification->notify);
+    lock([&](){
+        for(auto modelRef : this->modelRefs){
+            func(modelRef);
         }
-    }
-
-    operationsQueue.clear();
+    });
 }
 
 template <class ModelClass>
@@ -302,7 +292,7 @@ shared_ptr<ModelClass>  ofxCMS::BaseCollection<ModelClass>::remove(shared_ptr<Mo
 template <class ModelClass>
 shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::removeByCid(int cid, bool notify){
     // vector being iterated over? schedule removal operation for when iteration is done
-    if(isIterating()){
+    if(isLocked()){
         operationsQueue.push_back(make_shared<Modification>(cid, notify));
         return nullptr;
     }
@@ -319,7 +309,9 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::removeByCid(int cid, 
 
     // remove callbacks
     modelRef->attributeChangeEvent.removeListeners(this);
-    this->modelChangeEvent.stopForward(modelRef->changeEvent);
+    // modelRef->changeEvent.removeListeners(this);
+    // this->modelChangeEvent.stopForward(modelRef->changeEvent);
+    modelRef->changeEvent.removeListeners(this);
 
     // remove
     modelRefs.erase(modelRefs.begin() + idx);
@@ -344,4 +336,27 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::removeByIndex(unsigne
 
     // invoke main remove routine
     return removeByCid(modelRef->cid(), notify);
+}
+
+template <class ModelClass>
+void ofxCMS::BaseCollection<ModelClass>::lock(LockFunctor func){
+    vectorLockCount++;
+    func();
+    vectorLockCount--;
+
+    // still (recursively) iterating over our vector? skip processing opereations queue
+    if(isLocked())
+        return;
+
+    // after we're done iterating, we should process any items
+    // accumulated in the vector modificaton queue
+    for(auto modification : operationsQueue){
+        if(modification->addRef){
+            add(modification->addRef, modification->notify);
+        } else {
+            removeByCid(modification->removeCid, modification->notify);
+        }
+    }
+
+    operationsQueue.clear();
 }
