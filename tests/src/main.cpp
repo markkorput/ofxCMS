@@ -11,54 +11,6 @@ using namespace ofxCMS;
 
 class ofApp: public ofxUnitTestsApp{
 
-    void runMiddleware(){
-        TEST_START(middleware aborts)
-            Middleware<ofxCMS::Model> mid;
-
-            mid.addListener([](ofxCMS::Model& m) -> bool {
-                m.set("name", m.get("name") + " #1");
-                return true;
-            }, this);
-
-            mid.addListener([](ofxCMS::Model& m) -> bool {
-                m.set("name", m.get("name") + " #2");
-                return false; // <-- aborts!
-            }, this);
-
-            mid.addListener([](ofxCMS::Model& m) -> bool {
-                m.set("name", m.get("name") + " #3");
-                return true;
-            }, this);
-
-            ofxCMS::Model m;
-            test_eq(mid.notifyListeners(m), false, "");
-            test_eq(m.get("name"), " #1 #2", "");
-        TEST_END
-
-        TEST_START(middleware continues)
-        Middleware<ofxCMS::Model> mid;
-
-            mid.addListener([](ofxCMS::Model& m) -> bool {
-                m.set("name", m.get("name") + " #1");
-                return true;
-            }, this);
-
-            mid.addListener([](ofxCMS::Model& m) -> bool {
-                m.set("name", m.get("name") + " #2");
-                return true;
-            }, this);
-
-            mid.addListener([](ofxCMS::Model& m) -> bool {
-                m.set("name", m.get("name") + " #3");
-                return true;
-            }, this);
-
-            ofxCMS::Model m;
-            test_eq(mid.notifyListeners(m), true, "");
-            test_eq(m.get("name"), " #1 #2 #3", "");
-        TEST_END
-    }
-
     template<typename CollectionClass>
     shared_ptr<ofxCMS::Model> runCollection(){
         // create collection
@@ -196,7 +148,76 @@ class ofApp: public ofxUnitTestsApp{
     }
 
     void run(){
-        runMiddleware();
+        TEST_START(ofxLiquidEvent modified while invoked)
+            ofxLiquidEvent<ofxCMS::Model> event;
+            ofxCMS::Model model;
+
+            event.addListener([&](ofxCMS::Model& m){
+                model.set("before", ofToString(event.size()));
+                // modify event (remove listener) while being invoked
+                // (this callback gets called by the event itself)
+                event.removeListeners(this);
+                model.set("after", ofToString(event.size()));
+            }, this);
+
+            // one callback; the one we just registered
+            test_eq(event.size(), 1, "");
+
+            // invoke callback
+            event.notifyListeners(model);
+            test_eq(model.get("before"), "1", "");
+            // still 1, the remove won't take effect until
+            // the event is idle again
+            test_eq(model.get("after"), "1", "");
+            // the callback was removed immediately after the last listener finished running
+            test_eq(event.size(), 0, "");
+        TEST_END
+
+        TEST_START(middleware aborts)
+            Middleware<ofxCMS::Model> mid;
+
+            mid.addListener([](ofxCMS::Model& m) -> bool {
+                m.set("name", m.get("name") + " #1");
+                return true;
+            }, this);
+
+            mid.addListener([](ofxCMS::Model& m) -> bool {
+                m.set("name", m.get("name") + " #2");
+                return false; // <-- aborts!
+            }, this);
+
+            mid.addListener([](ofxCMS::Model& m) -> bool {
+                m.set("name", m.get("name") + " #3");
+                return true;
+            }, this);
+
+            ofxCMS::Model m;
+            test_eq(mid.notifyListeners(m), false, "");
+            test_eq(m.get("name"), " #1 #2", "");
+        TEST_END
+
+        TEST_START(middleware continues)
+            Middleware<ofxCMS::Model> mid;
+
+            mid.addListener([](ofxCMS::Model& m) -> bool {
+                m.set("name", m.get("name") + " #1");
+                return true;
+            }, this);
+
+            mid.addListener([](ofxCMS::Model& m) -> bool {
+                m.set("name", m.get("name") + " #2");
+                return true;
+            }, this);
+
+            mid.addListener([](ofxCMS::Model& m) -> bool {
+                m.set("name", m.get("name") + " #3");
+                return true;
+            }, this);
+
+            ofxCMS::Model m;
+            test_eq(mid.notifyListeners(m), true, "");
+            test_eq(m.get("name"), " #1 #2 #3", "");
+        TEST_END
 
         auto modelRef = runCollection<ofxCMS::BaseCollection<ofxCMS::Model>>();
         unsigned int cid;

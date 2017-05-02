@@ -30,6 +30,7 @@ public:
 	typedef FUNCTION<void(ArgType&)> Functor;
 	typedef FUNCTION<void()> VoidFunctor;
 	typedef int32_t IndexType; // use negative index for bottom of stack
+
 	struct Index {
 		Index(IndexType order, void* owner) {
 			this->order = order;
@@ -44,6 +45,7 @@ public:
 		IndexType order;
 		void* owner;
 	};
+
 	typedef std::map<Index, Functor> FunctorMap;
 	typedef std::pair<Index, Functor> Pair;
 
