@@ -263,6 +263,8 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(colRef->at(2)->cid(), cid+6, "");
 
             colRef->modelRemoveEvent.removeListeners(this);
+
+            ofLogWarning() << "TODO: also feature one-time (non-active) limit";
         TEST_END
 
         TEST_START(sync once)
@@ -457,6 +459,61 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(colRefA->size(), 3, ""); // now it's removed again
             modelRef->set("Age", "36");
             test_eq(colRefA->size(), 3, ""); // not automatically re-added again, once its gone, need to re-add explicitly
+        TEST_END
+
+        TEST_START(combine filter sync and limit)
+            auto colRefA = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            auto colRefB = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            // start with five models in B
+            auto modelRef = colRefB->create();
+            modelRef->set("value", "10");
+            modelRef = colRefB->create();
+            modelRef->set("value", "20");
+            modelRef = colRefB->create();
+            modelRef->set("value", "30");
+            modelRef = colRefB->create();
+            modelRef->set("value", "40");
+            modelRef = colRefB->create();
+            modelRef->set("value", "50");
+            // A only takes tkes the models with value >= 30 from B
+            colRefA->filter([](ofxCMS::Model& model){
+                return ofToInt(model.get("value", "0")) >= 30;
+            });
+            colRefA->sync(colRefB);
+            test_eq(colRefA->size(), 3, "");
+            test_eq(colRefB->size(), 5, "");
+            // add model to B
+            modelRef = colRefB->create();
+            test_eq(colRefA->size(), 3, "");
+            test_eq(colRefB->size(), 6, "");
+            // set its value to 60
+            modelRef->set("value", "60");
+            ofLogWarning() << "should this be 4?";
+            test_eq(colRefA->size(), 3, ""); // not adopted, already rejected
+            test_eq(colRefB->size(), 6, "");
+            // apply limit
+            colRefA->limit(2);
+            test_eq(colRefA->size(), 2, "");
+            colRefA->create();
+            test_eq(colRefA->size(), 2, "");
+            // add new model to B which -because of limit- doesn't get added to A
+            modelRef = make_shared<ofxCMS::Model>();
+            modelRef->set("value", "80");
+            colRefB->add(modelRef);
+            test_eq(colRefA->size(), 2, "");
+            test_eq(colRefA->at(0)->get("value"), "30", "");
+            test_eq(colRefA->at(1)->get("value"), "40", "");
+            test_eq(colRefB->size(), 7, "");
+            // change A to fifo; now it does get new models from B
+            colRefA->setFifo(true);
+            modelRef = make_shared<ofxCMS::Model>();
+            modelRef->set("value", "99");
+            colRefB->add(modelRef);
+            test_eq(colRefA->size(), 2, "");
+            test_eq(colRefA->at(0)->get("value"), "30", "");
+            test_eq(colRefA->at(1)->get("value"), "40", "");
+            // test_eq(colRefB->size(), 8, "");
+            // colRefB->
         TEST_END
     }
 };

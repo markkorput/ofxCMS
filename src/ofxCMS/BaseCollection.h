@@ -156,14 +156,7 @@ void ofxCMS::BaseCollection<ModelClass>::add(shared_ptr<ModelClass> modelRef, bo
     // add to our collection
     modelRefs.push_back(modelRef);
 
-    // register callbacks (unregistered in .remove)
-    modelRef->changeEvent.addListener([this](ModelClass& model){
-        // we lock the vector, so modelChangeEvent listeners can safely
-        // invoke remove operations without risking errors
-        lock([&](){
-            this->modelChangeEvent.notifyListeners(model);
-        });
-    }, this);
+    modelChangeEvent.forward(modelRef->changeEvent);
 
     modelRef->attributeChangeEvent.addListener([this](ofxCMS::Model::AttrChangeArgs& args) -> void {
         // turn regular pointer into a shared_ptr (Ref) by looking it up in our internal ref list
@@ -271,6 +264,10 @@ int ofxCMS::BaseCollection<ModelClass>::indexOfCid(unsigned int cid){
 
 template <class ModelClass>
 void ofxCMS::BaseCollection<ModelClass>::each(ModelRefFunc func){
+    // when locked all add/remove operations to our internal modelRefs vector
+    // are intercepted and queue for execution until after the lock is lifter,
+    // so we can safely iterate over the vector and callbacks are free to call
+    // our add/remove methods without causing errors
     lock([&](){
         for(auto modelRef : this->modelRefs){
             func(modelRef);
@@ -309,9 +306,7 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::removeByCid(int cid, 
 
     // remove callbacks
     modelRef->attributeChangeEvent.removeListeners(this);
-    // modelRef->changeEvent.removeListeners(this);
-    // this->modelChangeEvent.stopForward(modelRef->changeEvent);
-    modelRef->changeEvent.removeListeners(this);
+    this->modelChangeEvent.stopForward(modelRef->changeEvent);
 
     // remove
     modelRefs.erase(modelRefs.begin() + idx);
