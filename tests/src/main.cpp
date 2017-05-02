@@ -455,6 +455,8 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(colRefA->size(), 4, ""); // now it's added
             modelRef->set("Age", "19");
             test_eq(colRefA->size(), 3, ""); // now it's removed again
+            modelRef->set("Age", "36");
+            test_eq(colRefA->size(), 3, ""); // not automatically re-added again, once its gone, need to re-add explicitly
         TEST_END
     }
 };
