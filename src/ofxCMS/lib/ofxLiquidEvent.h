@@ -20,7 +20,7 @@
 
 template<class ArgType>
 class ofxLiquidEvent {
-public:
+public: // types & constants
 	//this used to be
 	/*
 	 typedef public FUNCTION<void(ArgType&)> Functor;
@@ -30,6 +30,17 @@ public:
 	typedef FUNCTION<void(ArgType&)> Functor;
 	typedef FUNCTION<void()> VoidFunctor;
 	typedef int32_t IndexType; // use negative index for bottom of stack
+
+	class Modification {
+	public:
+		Functor func;
+		void* owner;
+		IndexType order;
+		bool add;
+
+		Modification(void* ownerToRemove) : owner(ownerToRemove), add(false){}
+		Modification(Functor _func, void* _owner, IndexType _order) : func(_func), owner(_owner), order(_order), add(true){}
+	};
 
 	struct Index {
 		Index(IndexType order, void* owner) {
@@ -49,61 +60,76 @@ public:
 	typedef std::map<Index, Functor> FunctorMap;
 	typedef std::pair<Index, Functor> Pair;
 
+
+public: // methods
+
+	ofxLiquidEvent() : lockCounter(0){}
+
 	void operator+=(Functor functor) {
-		this->addListener(functor, 0);
+		this->addListener(functor, 0, 0);
 	}
 
 	void addListener(Functor functor, void* owner) {
-		IndexType order = 0;
-		if (!this->listeners.empty()) {
-			//loop until we find a free index
-			while (listeners.find(Index(order, 0)) != listeners.end()) {
-				order++;
-			}
-		}
-		this->listeners.insert(Pair(Index(order, owner), functor));
+		addListener(functor, owner, 0);
 	}
 
 	void addListener(Functor functor, void* owner, IndexType order) {
+		if(isLocked()){
+			// queue modification until we unlock
+			modificationRefs.push_back(make_shared<Modification>(functor, owner, order));
+			return;
+		}
+
 		//loop until we find a free index
 		while (listeners.find(Index(order, 0)) != listeners.end()) {
 			order++;
 		}
+
 		this->listeners.insert(Pair(Index(order, owner), functor));
 	}
 
 	void removeListeners(void* owner) {
-    std::vector<IndexType> toRemove;
+		if(isLocked()){
+			// queue modification until we unlock
+			modificationRefs.push_back(make_shared<Modification>(owner));
+			return;
+		}
+
+		std::vector<IndexType> toRemove;
+
 		for(auto iterator : this->listeners) {
 			if (iterator.first.owner == owner) {
 				toRemove.push_back(iterator.first.order);
 			}
 		}
+
 		for(auto order : toRemove) {
 			this->listeners.erase(Index(order, owner));
 		}
 	}
 
 	void notifyListeners(ArgType& arguments) {
-		for (auto listener : this->listeners) {
-			listener.second(arguments);
-		}
+		lock([&](){
+			for (auto listener : this->listeners) {
+				listener.second(arguments);
+			}
+		});
 	}
 
 	/// Warning : You will not be able to call this if ArgType does not have a default public constructor
 	void notifyListeners() {
 		ArgType dummyArguments;
-		for (auto listener : this->listeners) {
-			listener.second(dummyArguments);
-		}
+		notifyListeners(dummyArguments);
 	}
 
 	/// Useful for mouse action stacks where last is top (first)
 	void notifyListenersInReverse(ArgType& arguments) {
-		auto it = this->listeners.rbegin();
-		for (; it != this->listeners.rend(); it++) {
-			it->second(arguments);
-		}
+		lock([&](){
+			auto it = this->listeners.rbegin();
+			for (; it != this->listeners.rend(); it++) {
+				it->second(arguments);
+			}
+		});
 	}
 
 	void operator()(ArgType& arguments) {
@@ -127,7 +153,37 @@ public:
 	}
 
 protected:
+
+	bool isLocked(){ return lockCounter > 0; }
+	void lock(FUNCTION<void(void)> func){
+		lockCounter++;
+		func();
+		lockCounter--;
+
+		// locks can be nested!
+		if(isLocked())
+			return;
+
+		// process queue
+		for(auto modRef : modificationRefs){
+			if(modRef->add){
+				addListener(modRef->func, modRef->owner, modRef->order);
+			} else {
+				removeListeners(modRef->owner);
+			}
+		}
+
+		// clear queue
+		modificationRefs.clear();
+	}
+
+protected:
+
 	FunctorMap listeners;
+
+private:
+	int lockCounter;
+	std::vector<shared_ptr<Modification>> modificationRefs;
 };
 
 
@@ -149,21 +205,14 @@ class ofxLiquidEvent<void> {
 	typedef std::pair<Index, Functor> Pair;
 public:
 	void operator+=(Functor functor) {
-		this->addListener(functor, 0);
+		this->addListener(functor, 0, 0);
 	}
 
 	void addListener(Functor functor, void* owner) {
-		IndexType order = 0;
-		if (!this->listeners.empty()) {
-			//loop until we find a free index
-			while (listeners.find(Index(order, 0)) != listeners.end()) {
-				order++;
-			}
-		}
-		this->listeners.insert(Pair(Index(order, owner), functor));
+		addListener(functor, owner, 0);
 	}
 
-	void addListener(Functor functor, IndexType order, void* owner) {
+	void addListener(Functor functor, void* owner, IndexType order) {
 		//loop until we find a free index
 		while (listeners.find(Index(order, 0)) != listeners.end()) {
 			order++;
@@ -201,7 +250,6 @@ public:
 		return this->listeners.empty();
 	}
 
-
 	size_t size() const {
 		return this->listeners.size();
 	}
@@ -213,6 +261,7 @@ public:
 	void clear() {
 		this->listeners.clear();
 	}
+
 protected:
 	FunctorMap listeners;
 };
