@@ -1,16 +1,17 @@
 #pragma once
 
-#include "BseCollection.h"
+#include "BaseCollection.h"
+#include "ofxJSONElement.h"
 
 namespace ofxCMS{
 
     template<class ModelClass>
     class JsonParser {
     public:
-        JsonParser() : collection(NULL), doAdd(true), doUpdate(true), doRemove(true){}
+        JsonParser() : collection(NULL), doCreate(true), doUpdate(true), doRemove(true){}
         // ~JsonParser(){ destroy(); }
 
-        void setup(BaseCollection *collection, const string& filename);
+        void setup(BaseCollection<ModelClass> *collection, const string& filename);
         // void destroy();
 
         bool load();
@@ -18,29 +19,29 @@ namespace ofxCMS{
     private:
 
         bool parse(const string &jsonText);
-        bool parseModelJson(shared_ptr<ModelClass>, const string &jsonText);
+        bool parseModelJson(shared_ptr<ModelClass> modelRef, const string &jsonText);
         string processJsonValue(Json::Value &value);
         string idFromElement(ofxJSONElement& node);
 
     private:
-        BaseCollection *collection;
+        BaseCollection<ModelClass> *collection;
         string filename;
-        bool doAdd, doUpdate, doRemove;
+        bool doCreate, doUpdate, doRemove;
     };
 }
 
 template<class ModelClass>
-void ofxCMS::JsonParser<ModelClass>::setup(BaseCollection *collection, const string& filename){
+void ofxCMS::JsonParser<ModelClass>::setup(BaseCollection<ModelClass> *collection, const string& filename){
     this->collection = collection;
     this->filename = filename;
 }
 
 // template<class ModelClass>
-// void ofxCMS::JsonParser<ModelsClass>::destroy(){}
+// void ofxCMS::JsonParser<ModelClass>::destroy(){}
 // }
 
 template<class ModelClass>
-bool ofxCMS::JsonParser<ModelsClass>::load(){}
+bool ofxCMS::JsonParser<ModelClass>::load(){
     ofBuffer content;
     ofFile file(filename);
 
@@ -51,7 +52,7 @@ bool ofxCMS::JsonParser<ModelsClass>::load(){}
     }
 
     // read file content
-    content = file.readToBugger();
+    content = file.readToBuffer();
 
     // parse content
     return parse(content.getText());
@@ -74,7 +75,7 @@ bool ofxCMS::JsonParser<ModelClass>::parse(const string &jsonText){
     }
 
     if(doRemove){
-        collection->each([](shared_ptr<ModelClass> modelRef){
+        collection->each([&](shared_ptr<ModelClass> modelRef){
             string id = modelRef->id();
 
             // assume we'll have to remove
@@ -121,19 +122,8 @@ bool ofxCMS::JsonParser<ModelClass>::parse(const string &jsonText){
     return true;
 }
 
-// for convenience
 template<class ModelClass>
-bool ofxCMS::JsonParser<ModelClass>::parse(const ofxJSONElement & node, bool doRemove, bool doUpdate, bool doCreate){
-    if(node.type() == Json::nullValue) return false;
-
-    // Can't figure out how to use this kinda object, so for now; let the text-based parse method deal with it
-    // (meaning we'll convert back to text, and parse that to json again... yea...)
-    if(node.type() == Json::stringValue) return parse(node.asString(), doRemove, doUpdate, doCreate);
-    return parse(node.getRawString(), doRemove, doUpdate, doCreate);
-}
-
-template<class ModelClass>
-bool ofxCMS::JsonParser<ModelClass>::parseModelJson(shared_ptr<ModelClass>, const string &jsonText){
+bool ofxCMS::JsonParser<ModelClass>::parseModelJson(shared_ptr<ModelClass> modelRef, const string &jsonText){
     ofxJSONElement doc;
 
     if(!doc.parse(jsonText)){
@@ -143,7 +133,7 @@ bool ofxCMS::JsonParser<ModelClass>::parseModelJson(shared_ptr<ModelClass>, cons
 
     vector<string> attrs = doc.getMemberNames();
     for(int i=0; i<attrs.size(); i++){
-        model->set(attrs[i], processJsonValue(doc[attrs[i]]));
+        modelRef->set(attrs[i], processJsonValue(doc[attrs[i]]));
     }
 
     return true;

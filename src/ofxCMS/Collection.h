@@ -99,7 +99,7 @@ void ofxCMS::Collection<ModelClass>::filter(FilterFunctor func, bool active){
 #ifdef OFXCMS_JSON
 template<class ModelClass>
 bool ofxCMS::Collection<ModelClass>::loadJsonFromFile(const string& filename){
-    JsonParser jsonParser;
+    JsonParser<ModelClass> jsonParser;
     jsonParser.setup(this, filename);
     jsonParser.load();
 }
