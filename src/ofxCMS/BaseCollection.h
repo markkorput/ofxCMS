@@ -8,13 +8,7 @@
 
 #pragma once
 
-#ifdef OFXCMS_USE_TR1
-	#include <tr1/functional>
-	#define FUNCTION tr1::function
-#else
-	#include <functional>
-	#define FUNCTION std::function
-#endif
+#include "lib/Middleware.h"
 
 // BaseCollection is a "core-essential" base class for the main Collection class.
 // BaseCollection only implement the bare basics of creating, adding, update and removing items.
@@ -28,6 +22,7 @@ namespace ofxCMS {
             const static unsigned int NO_LIMIT = 0;
             const static unsigned int INVALID_INDEX = -1;
 
+            typedef FUNCTION<void(void)> LockFunctor;
             typedef FUNCTION<void(shared_ptr<ModelClass>)> ModelRefFunc;
 
             // used in attributeChangeEvent notifications
@@ -37,9 +32,19 @@ namespace ofxCMS {
                 string value;
             };
 
+            class Modification {
+                public:
+                    shared_ptr<ModelClass> addRef;
+                    unsigned int removeCid;
+                    bool notify;
+                    Modification() : addRef(nullptr), removeCid(ModelClass::INVALID_CID), notify(true){}
+                    Modification(shared_ptr<ModelClass> ref, bool _notify=true) : addRef(ref), removeCid(ModelClass::INVALID_CID), notify(_notify){}
+                    Modification(int cid, bool _notify=true) : addRef(nullptr), removeCid(cid), notify(_notify){}
+            };
+
         public: // methods
 
-            // BaseCollection(){}
+            BaseCollection() : vectorLockCount(0){}
             ~BaseCollection(){ destroy(); }
 
             void setup(vector< map<string, string> > &_data);
@@ -70,34 +75,43 @@ namespace ofxCMS {
             // CRUD - Delete
             shared_ptr<ModelClass> remove(shared_ptr<ModelClass> model, bool notify=true);
             shared_ptr<ModelClass> removeByCid(int cid, bool notify=true);
-            shared_ptr<ModelClass> remove(int index, bool notify=true);
+            shared_ptr<ModelClass> removeByIndex(unsigned int index, bool notify=true);
 
         private: // methods
 
             int indexOfCid(unsigned int cid);
             unsigned int nextCid(){ return ModelClass::nextCid; }
             void setNextCid(unsigned int newNextCid){ ModelClass::nextCid = newNextCid; }
+            bool isLocked() const { return vectorLockCount > 0; }
+            void lock(LockFunctor func);
 
         public: // events
 
+            Middleware<ofxCMS::Model> beforeAdd;
             LambdaEvent<ModelClass> modelAddedEvent;
             LambdaEvent<BaseCollection<ModelClass>> initializeEvent;
             LambdaEvent<ModelClass> modelChangeEvent;
             LambdaEvent<AttrChangeArgs> attributeChangeEvent;
-            LambdaEvent <ModelClass> modelRemoveEvent;
+            LambdaEvent<ModelClass> modelRemoveEvent;
 
         private: // attributes
 
             // unsigned int mNextId;
-            vector<shared_ptr<ModelClass>> modelRefs;
-
+            std::vector<shared_ptr<ModelClass>> modelRefs;
+            unsigned int vectorLockCount;
+            std::vector<shared_ptr<Modification>> operationsQueue;
     };
 }
 
 template <class ModelClass>
 void ofxCMS::BaseCollection<ModelClass>::destroy(){
+    if(isLocked()){ // unlikely
+        ofLogWarning() << "shouldn't destroy collection while it's being iterated over, aborting destroy";
+        return;
+    }
+
     for(int i=modelRefs.size()-1; i>=0; i--){
-        remove(i, false /* don't notify */);
+        removeByIndex(i);
     }
 
     modelRefs.clear();
@@ -114,6 +128,12 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::create(){
 
 template <class ModelClass>
 void ofxCMS::BaseCollection<ModelClass>::add(shared_ptr<ModelClass> modelRef, bool notify){
+    // vector being iterated over? schedule removal operation for when iteration is done
+    if(isLocked()){
+        operationsQueue.push_back(make_shared<Modification>(modelRef, notify));
+        return;
+    }
+
     if(modelRef == nullptr){
         // What the hell are we supposed to do with this??
         ofLogWarning() << "got nullptr model to add to collection";
@@ -130,11 +150,20 @@ void ofxCMS::BaseCollection<ModelClass>::add(shared_ptr<ModelClass> modelRef, bo
         setNextCid(modelRef->cid() + 1);
     }
 
+    if(!beforeAdd(*modelRef.get()))
+        return;
+
     // add to our collection
     modelRefs.push_back(modelRef);
 
     // register callbacks (unregistered in .remove)
-    this->modelChangeEvent.forward(modelRef->changeEvent);
+    modelRef->changeEvent.addListener([this](ModelClass& model){
+        // we lock the vector, so modelChangeEvent listeners can safely
+        // invoke remove operations without risking errors
+        lock([&](){
+            this->modelChangeEvent.notifyListeners(model);
+        });
+    }, this);
 
     modelRef->attributeChangeEvent.addListener([this](ofxCMS::Model::AttrChangeArgs& args) -> void {
         // turn regular pointer into a shared_ptr (Ref) by looking it up in our internal ref list
@@ -168,7 +197,7 @@ void ofxCMS::BaseCollection<ModelClass>::initialize(vector<map<string, string>>&
     // create and add models
     for(int i=0; i<_data.size(); i++){
         auto newModel = make_shared<ModelClass>();
-        newModel->set(_data[i], false /* no individual model notification */);
+        newModel->set(_data[i]);
         add(newModel);
     }
 
@@ -242,37 +271,32 @@ int ofxCMS::BaseCollection<ModelClass>::indexOfCid(unsigned int cid){
 
 template <class ModelClass>
 void ofxCMS::BaseCollection<ModelClass>::each(ModelRefFunc func){
-    for(auto modelRef : modelRefs){
-        func(modelRef);
-    }
+    lock([&](){
+        for(auto modelRef : this->modelRefs){
+            func(modelRef);
+        }
+    });
 }
 
 template <class ModelClass>
-shared_ptr<ModelClass>  ofxCMS::BaseCollection<ModelClass>::remove(shared_ptr<ModelClass> model, bool notify){
-    if(model == nullptr){
+shared_ptr<ModelClass>  ofxCMS::BaseCollection<ModelClass>::remove(shared_ptr<ModelClass> modelRef, bool notify){
+    if(modelRef == nullptr){
         ofLogWarning() << "got NULL parameter";
         return nullptr;
     }
 
     // find index and remove by index
-    int i=0;
-    for(auto modelRef : modelRefs){
-        if(modelRef == nullptr){ // this should be impossible but has been ocurring during debugging
-            ofLogError() << "got (impossible?) nullptr from models vector for index: " << i;
-        } else if(model->equals(modelRef)){
-            return remove(i, notify);
-        }
-
-        i++;
-    }
-
-    // didn't find it
-	ofLogWarning() << "couldn't find specified model to remove";
-    return nullptr;
+    return removeByCid(modelRef->cid());
 }
 
 template <class ModelClass>
 shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::removeByCid(int cid, bool notify){
+    // vector being iterated over? schedule removal operation for when iteration is done
+    if(isLocked()){
+        operationsQueue.push_back(make_shared<Modification>(cid, notify));
+        return nullptr;
+    }
+
     int idx = indexOfCid(cid);
 
     if(idx == INVALID_INDEX){
@@ -280,26 +304,17 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::removeByCid(int cid, 
         return nullptr;
     }
 
-    return remove(idx, notify);
-}
-
-template <class ModelClass>
-shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::remove(int index, bool notify){
     // find
-    auto modelRef = at(index);
-
-    // verify
-    if(modelRef == nullptr){
-        ofLogWarning() << "couldn't find model with index: " << index;
-        return nullptr;
-    }
+    auto modelRef = at(idx);
 
     // remove callbacks
     modelRef->attributeChangeEvent.removeListeners(this);
-    this->modelChangeEvent.stopForward(modelRef->changeEvent);
+    // modelRef->changeEvent.removeListeners(this);
+    // this->modelChangeEvent.stopForward(modelRef->changeEvent);
+    modelRef->changeEvent.removeListeners(this);
 
     // remove
-    modelRefs.erase(modelRefs.begin() + index);
+    modelRefs.erase(modelRefs.begin() + idx);
 
     // notify
     if(notify)
@@ -307,4 +322,41 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::remove(int index, boo
 
     // return removed instance
     return modelRef;
+}
+
+template <class ModelClass>
+shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::removeByIndex(unsigned int index, bool notify){
+    auto modelRef = at(index);
+
+    // check
+    if(modelRef == nullptr){
+        ofLogWarning() << "couldn't find model with index: " << index;
+        return nullptr;
+    }
+
+    // invoke main remove routine
+    return removeByCid(modelRef->cid(), notify);
+}
+
+template <class ModelClass>
+void ofxCMS::BaseCollection<ModelClass>::lock(LockFunctor func){
+    vectorLockCount++;
+    func();
+    vectorLockCount--;
+
+    // still (recursively) iterating over our vector? skip processing opereations queue
+    if(isLocked())
+        return;
+
+    // after we're done iterating, we should process any items
+    // accumulated in the vector modificaton queue
+    for(auto modification : operationsQueue){
+        if(modification->addRef){
+            add(modification->addRef, modification->notify);
+        } else {
+            removeByCid(modification->removeCid, modification->notify);
+        }
+    }
+
+    operationsQueue.clear();
 }

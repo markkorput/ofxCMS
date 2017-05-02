@@ -3,10 +3,14 @@
 #include "BaseCollection.h"
 #include "CollectionLimit.h"
 #include "CollectionSync.h"
+#include "CollectionFilter.h"
 
 namespace ofxCMS {
     template<class ModelClass>
     class Collection : public BaseCollection<ModelClass> {
+
+    public: // types & constants
+        typedef FUNCTION<bool(ModelClass&)> FilterFunctor;
 
     public: // methods
         Collection(){}
@@ -16,9 +20,15 @@ namespace ofxCMS {
 
         void sync(shared_ptr<Collection<ModelClass>> other, bool active=true);
         void stopSync(shared_ptr<Collection<ModelClass>> other);
+
+        void filter(const string& attr, const string& value, bool active=true);
+        void reject(const string& attr, const string& value, bool active=true);
+        void filter(FilterFunctor func, bool active=true);
+
     private: // attributes
         CollectionLimit<ModelClass> collectionLimit;
         std::vector<shared_ptr<CollectionSync<ModelClass>>> collectionSyncs;
+        std::vector<shared_ptr<CollectionFilter<ModelClass>>> collectionFilters;
     };
 }
 
@@ -31,6 +41,7 @@ template<class ModelClass>
 void ofxCMS::Collection<ModelClass>::sync(shared_ptr<Collection<ModelClass>> other, bool active){
     auto sync = make_shared<CollectionSync<ModelClass>>();
     sync->setup(this, other, active);
+    ofLogWarning() << "TODO: implement active by not saving shared_ptr";
     collectionSyncs.push_back(sync);
 }
 
@@ -44,4 +55,34 @@ void ofxCMS::Collection<ModelClass>::stopSync(shared_ptr<Collection<ModelClass>>
     }
 
     ofLogWarning() << "Could not source to stop syncing from";
+}
+
+template<class ModelClass>
+void ofxCMS::Collection<ModelClass>::filter(const string& attr, const string& value, bool active){
+    auto filter = make_shared<CollectionFilter<ModelClass>>();
+    filter->setup(this, attr, value);
+
+    // if active; save filter so it doesn't auto-destruct (since it's a shared_ptr)
+    if(active)
+        collectionFilters.push_back(filter);
+}
+
+template<class ModelClass>
+void ofxCMS::Collection<ModelClass>::reject(const string& attr, const string& value, bool active){
+    auto filter = make_shared<CollectionFilter<ModelClass>>();
+    filter->setup(this, attr, value, false);
+
+    // if active; save filter so it doesn't auto-destruct (since it's a shared_ptr)
+    if(active)
+        collectionFilters.push_back(filter);
+}
+
+template<class ModelClass>
+void ofxCMS::Collection<ModelClass>::filter(FilterFunctor func, bool active){
+    auto filter = make_shared<CollectionFilter<ModelClass>>();
+    filter->setup(this, func);
+
+    // if active; save filter so it doesn't auto-destruct (since it's a shared_ptr)
+    if(active)
+        collectionFilters.push_back(filter);
 }

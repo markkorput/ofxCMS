@@ -2,6 +2,7 @@
 #include "ofxUnitTests.h"
 // local
 #include "ofxCMS.h"
+#include "ofxCMS/lib/Middleware.h"
 
 #define TEST_START(x) {ofLog()<<"CASE: "<<#x;
 #define TEST_END }
@@ -92,13 +93,13 @@ class ofApp: public ofxUnitTestsApp{
         TEST_END
 
         TEST_START(remove with invalid index)
-            auto model = collectionRef->remove(3);
+            auto model = collectionRef->removeByIndex(3);
             test_eq(model == nullptr, true, "");
             test_eq(collectionRef->size(), 3, "");
         TEST_END
 
         TEST_START(remove by index)
-            auto model = collectionRef->remove(2);
+            auto model = collectionRef->removeByIndex(2);
             test_eq(collectionRef->size(), 2, "");
             test_eq(model->cid(), cid+20, "");
             test_eq(model.use_count(), 1, ""); // last reference
@@ -147,6 +148,77 @@ class ofApp: public ofxUnitTestsApp{
     }
 
     void run(){
+        TEST_START(ofxLiquidEvent modified while invoked)
+            ofxLiquidEvent<ofxCMS::Model> event;
+            ofxCMS::Model model;
+
+            event.addListener([&](ofxCMS::Model& m){
+                model.set("before", ofToString(event.size()));
+                // modify event (remove listener) while being invoked
+                // (this callback gets called by the event itself)
+                event.removeListeners(this);
+                model.set("after", ofToString(event.size()));
+            }, this);
+
+            // one callback; the one we just registered
+            test_eq(event.size(), 1, "");
+
+            // invoke callback
+            event.notifyListeners(model);
+            test_eq(model.get("before"), "1", "");
+            // still 1, the remove won't take effect until
+            // the event is idle again
+            test_eq(model.get("after"), "1", "");
+            // the callback was removed immediately after the last listener finished running
+            test_eq(event.size(), 0, "");
+        TEST_END
+
+        TEST_START(middleware aborts)
+            Middleware<ofxCMS::Model> mid;
+
+            mid.addListener([](ofxCMS::Model& m) -> bool {
+                m.set("name", m.get("name") + " #1");
+                return true;
+            }, this);
+
+            mid.addListener([](ofxCMS::Model& m) -> bool {
+                m.set("name", m.get("name") + " #2");
+                return false; // <-- aborts!
+            }, this);
+
+            mid.addListener([](ofxCMS::Model& m) -> bool {
+                m.set("name", m.get("name") + " #3");
+                return true;
+            }, this);
+
+            ofxCMS::Model m;
+            test_eq(mid.notifyListeners(m), false, "");
+            test_eq(m.get("name"), " #1 #2", "");
+        TEST_END
+
+        TEST_START(middleware continues)
+            Middleware<ofxCMS::Model> mid;
+
+            mid.addListener([](ofxCMS::Model& m) -> bool {
+                m.set("name", m.get("name") + " #1");
+                return true;
+            }, this);
+
+            mid.addListener([](ofxCMS::Model& m) -> bool {
+                m.set("name", m.get("name") + " #2");
+                return true;
+            }, this);
+
+            mid.addListener([](ofxCMS::Model& m) -> bool {
+                m.set("name", m.get("name") + " #3");
+                return true;
+            }, this);
+
+            ofxCMS::Model m;
+            test_eq(mid.notifyListeners(m), true, "");
+            test_eq(m.get("name"), " #1 #2 #3", "");
+        TEST_END
+
         auto modelRef = runCollection<ofxCMS::BaseCollection<ofxCMS::Model>>();
         unsigned int cid;
 
@@ -215,7 +287,7 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(colRefA->at(0).get(), colRefB->at(0).get(), "");
 
             // sync is not active; A won't drop models along with B
-            colRefB->remove(0);
+            colRefB->removeByIndex(0);
             test_eq(colRefB->size(), 1, "");
             test_eq(colRefA->size(), 1, "");
             test_eq(colRefA->at(0).get() == colRefB->at(0).get(), false, "");
@@ -254,15 +326,137 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(colRefA->size(), 5, "");
 
             // active sync; A drops models along with B
-            colRefB->remove(0);
-            colRefB->remove(0);
+            colRefB->removeByIndex(0);
+            colRefB->removeByIndex(0);
             test_eq(colRefB->size(), 0, "");
             test_eq(colRefA->size(), 3, "");
 
-            colRefC->remove(0);
-            colRefC->remove(0);
+            colRefC->removeByIndex(0);
+            colRefC->removeByIndex(0);
             test_eq(colRefC->size(), 1, "");
             test_eq(colRefA->size(), 1, "");
+        TEST_END
+
+        TEST_START(filter once on specific value)
+            auto colRefA = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            // add three models with different age values
+            auto modelRef = colRefA->create();
+            modelRef->set("Age", "12");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "25");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "31");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "46");
+            // filter on specific age value
+            colRefA->filter("Age", "31", false); // perform one-time filter
+            test_eq(colRefA->size(), 1, "");
+            test_eq(colRefA->at(0)->get("Age"), "31", "");
+            // add new model
+            colRefA->create();
+            test_eq(colRefA->size(), 2, "");
+            test_eq(colRefA->at(1)->get("Age"), "", "");
+        TEST_END
+
+        TEST_START(reject once on specific value)
+            auto colRefA = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            // add three models with different age values
+            auto modelRef = colRefA->create();
+            modelRef->set("Age", "12");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "25");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "31");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "46");
+            // filter on specific age value
+            colRefA->reject("Age", "31", false); // perform one-time filter
+            test_eq(colRefA->size(), 3, "");
+            test_eq(colRefA->at(0)->get("Age"), "12", "");
+            // add new model
+            modelRef = make_shared<ofxCMS::Model>();
+            modelRef->set("Age", "31");
+            colRefA->add(modelRef);
+            test_eq(colRefA->size(), 4, "");
+        TEST_END
+
+        TEST_START(filter actively on specific value)
+            auto colRefA = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            // add three models with different age values
+            auto modelRef = colRefA->create();
+            modelRef->set("Age", "12");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "25");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "31");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "46");
+            // filter on specific age value
+            colRefA->filter("Age", "31"); // enable perform active filter
+            test_eq(colRefA->size(), 1, "");
+            test_eq(colRefA->at(0)->get("Age"), "31", "");
+            // add new model
+            modelRef = colRefA->create();
+            test_eq(colRefA->size(), 1, "");
+            modelRef->set("Age", "31");
+            colRefA->add(modelRef);
+            test_eq(colRefA->size(), 2, "");
+        TEST_END
+
+        TEST_START(reject actively on specific value)
+            auto colRefA = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            // add three models with different age values
+            auto modelRef = colRefA->create();
+            modelRef->set("Age", "12");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "25");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "31");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "46");
+            // filter on specific age value
+            colRefA->reject("Age", "31"); // enable perform active filter
+            test_eq(colRefA->size(), 3, "");
+            test_eq(colRefA->at(0)->get("Age"), "12", "");
+            // add new model
+            modelRef = colRefA->create(); // adds
+            test_eq(colRefA->size(), 4, "");
+            modelRef->set("Age", "32"); // nothing happens
+            test_eq(colRefA->size(), 4, "");
+            modelRef->set("Age", "31"); // gets rejected
+            test_eq(colRefA->size(), 3, "");
+        TEST_END
+
+        TEST_START(filter actively using custom lambda)
+            auto colRefA = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            // add three models with different age values
+            auto modelRef = colRefA->create();
+            modelRef->set("Age", "12");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "25");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "31");
+            modelRef = colRefA->create();
+            modelRef->set("Age", "46");
+            // filter on specific age value
+            colRefA->filter([](ofxCMS::Model& model) -> bool {
+                return ofToInt(model.get("Age")) >= 21;
+            });
+            test_eq(colRefA->size(), 3, "");
+            test_eq(colRefA->at(0)->get("Age"), "25", "");
+            // add new model
+            modelRef = colRefA->create();
+            test_eq(colRefA->size(), 3, ""); // not added
+            modelRef->set("Age", "20");
+            colRefA->add(modelRef);
+            test_eq(colRefA->size(), 3, ""); // not added
+            modelRef->set("Age", "21");
+            colRefA->add(modelRef);
+            test_eq(colRefA->size(), 4, ""); // now it's added
+            modelRef->set("Age", "19");
+            test_eq(colRefA->size(), 3, ""); // now it's removed again
+            modelRef->set("Age", "36");
+            test_eq(colRefA->size(), 3, ""); // not automatically re-added again, once its gone, need to re-add explicitly
         TEST_END
     }
 };
