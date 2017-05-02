@@ -7,7 +7,10 @@
 //
 
 #include "Model.h"
-#include "ofxJSONElement.h"
+
+#ifdef OFXCMS_JSON
+    #include "ofxJSONElement.h"
+#endif
 
 using namespace ofxCMS;
 
@@ -53,6 +56,7 @@ string Model::get(const string &attr, string _default) const {
     return (_attributes.find(attr) == _attributes.end()) ? _default : _attributes.at(attr);
 }
 
+#ifdef OFXCMS_JSON
 // Convenience method with built-in support for MongoDB-style id format
 vector<string> Model::jsonArrayToIdsVector(string jsonText){
     return jsonArrayToStringVector(jsonText);
@@ -93,3 +97,4 @@ vector<string> Model::jsonArrayToStringVector(string jsonText){
 
     return ids;
 }
+#endif

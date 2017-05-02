@@ -47,10 +47,10 @@ namespace ofxCMS {
         bool equals(shared_ptr<Model> other){ return other->cid() == cid(); }
 
     public: // static helpers
-
+#ifdef OFXCMS_JSON
         static vector<string> jsonArrayToIdsVector(string jsonText);
         static vector<string> jsonArrayToStringVector(string jsonText);
-
+#endif
     public: // events
 
         LambdaEvent<Model> changeEvent;
