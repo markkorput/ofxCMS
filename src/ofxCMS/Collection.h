@@ -40,9 +40,11 @@ void ofxCMS::Collection<ModelClass>::limit(unsigned int amount){
 template<class ModelClass>
 void ofxCMS::Collection<ModelClass>::sync(shared_ptr<Collection<ModelClass>> other, bool active){
     auto sync = make_shared<CollectionSync<ModelClass>>();
-    sync->setup(this, other, active);
-    ofLogWarning() << "TODO: implement active by not saving shared_ptr";
-    collectionSyncs.push_back(sync);
+    sync->setup(this, other);
+
+    // if active safe pointer so it doesn't auto-destruct
+    if(active)
+        collectionSyncs.push_back(sync);
 }
 
 template<class ModelClass>
