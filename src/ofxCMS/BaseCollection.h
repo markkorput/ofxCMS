@@ -82,7 +82,7 @@ namespace ofxCMS {
         private: // methods
 
             int indexOfCid(unsigned int cid);
-            int indexOfId(const string& id);
+            int indexOfId(const string& _id);
             unsigned int nextCid(){ return ModelClass::nextCid; }
             void setNextCid(unsigned int newNextCid){ ModelClass::nextCid = newNextCid; }
             bool isLocked() const { return vectorLockCount > 0; }
@@ -273,11 +273,11 @@ int ofxCMS::BaseCollection<ModelClass>::indexOfCid(unsigned int cid){
 }
 
 template <class ModelClass>
-int ofxCMS::BaseCollection<ModelClass>::indexOfId(const string& cid){
+int ofxCMS::BaseCollection<ModelClass>::indexOfId(const string& _id){
     int idx=0;
 
     for(auto modelRef : modelRefs){
-        if(modelRef->id() == id)
+        if(modelRef->id() == _id)
             return idx;
         idx++;
     }

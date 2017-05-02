@@ -515,6 +515,15 @@ class ofApp: public ofxUnitTestsApp{
             // test_eq(colRefB->size(), 8, "");
             // colRefB->
         TEST_END
+
+        TEST_START(read json)
+            auto collectionRef = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            // collectionRef->loadJsonFromFile("test.json");
+            test_eq(collectionRef->size(), 3, "");
+            test_eq(collectionRef->at(0)->get("number"), "one", "");
+            test_eq(collectionRef->at(0)->get("number"), "two", "");
+            test_eq(collectionRef->at(0)->get("number"), "three", "");
+        TEST_END
     }
 };
 
