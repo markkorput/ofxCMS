@@ -21,7 +21,7 @@ namespace ofxCMS{
         bool parse(const string &jsonText);
         bool parseModelJson(shared_ptr<ModelClass> modelRef, const string &jsonText);
         string processJsonValue(Json::Value &value);
-        string idFromElement(ofxJSONElement& node);
+        string idFromElement(Json::Value& node);
 
     private:
         BaseCollection<ModelClass> *collection;
@@ -115,7 +115,7 @@ bool ofxCMS::JsonParser<ModelClass>::parse(const string &jsonText){
             //  not existing model found? Add a new one
             auto newRef = make_shared<ModelClass>();
             parseModelJson(newRef, ((ofxJSONElement)json[i]).getRawString(false));
-            add(newRef);
+            collection->add(newRef);
         }
     }
 
@@ -163,6 +163,6 @@ string ofxCMS::JsonParser<ModelClass>::processJsonValue(Json::Value &value){
 }
 
 template<class ModelClass>
-string ofxCMS::JsonParser<ModelClass>::idFromElement(ofxJSONElement& node){
+string ofxCMS::JsonParser<ModelClass>::idFromElement(Json::Value& node){
     return node["id"].isNull() ? "" : node["id"].asString();
 }

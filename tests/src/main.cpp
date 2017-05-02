@@ -517,12 +517,12 @@ class ofApp: public ofxUnitTestsApp{
         TEST_END
 
         TEST_START(read json)
-            auto collectionRef = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
-            // collectionRef->loadJsonFromFile("test.json");
-            test_eq(collectionRef->size(), 3, "");
-            test_eq(collectionRef->at(0)->get("number"), "one", "");
-            test_eq(collectionRef->at(0)->get("number"), "two", "");
-            test_eq(collectionRef->at(0)->get("number"), "three", "");
+            auto colRef = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            colRef->loadJsonFromFile("test.json");
+            test_eq(colRef->size(), 3, "");
+            test_eq(colRef->at(0)->get("number"), "one", "");
+            test_eq(colRef->at(1)->get("number"), "two", "");
+            test_eq(colRef->at(2)->get("number"), "three", "");
         TEST_END
     }
 };
