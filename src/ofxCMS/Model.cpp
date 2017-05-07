@@ -7,13 +7,16 @@
 //
 
 #include "Model.h"
-#include "ofxJSONElement.h"
+
+#ifdef OFXCMS_JSON
+    #include "ofxJSONElement.h"
+#endif
 
 using namespace ofxCMS;
 
 unsigned int Model::nextCid = 1;
 
-Model::Model() : mId(""), mCid(INVALID_CID){
+Model::Model() : mCid(INVALID_CID){
 }
 
 Model* Model::set(const string &attr, const string &value, bool notify){
@@ -50,9 +53,14 @@ Model* Model::set(map<string, string> &attrs, bool notify){
 }
 
 string Model::get(const string &attr, string _default) const {
-    return (_attributes.find(attr) == _attributes.end()) ? _default : _attributes.at(attr);
+    return has(attr) ? _attributes.at(attr) : _default;
 }
 
+bool Model::has(const string& attr) const {
+    return (_attributes.find(attr) == _attributes.end()) ? false : true;
+}
+
+#ifdef OFXCMS_JSON
 // Convenience method with built-in support for MongoDB-style id format
 vector<string> Model::jsonArrayToIdsVector(string jsonText){
     return jsonArrayToStringVector(jsonText);
@@ -93,3 +101,4 @@ vector<string> Model::jsonArrayToStringVector(string jsonText){
 
     return ids;
 }
+#endif

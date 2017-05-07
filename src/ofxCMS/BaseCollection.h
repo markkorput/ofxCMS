@@ -60,6 +60,8 @@ namespace ofxCMS {
             shared_ptr<ModelClass> at(unsigned int idx);
             shared_ptr<ModelClass> find(unsigned int cid){ return findByCid(cid); }
             shared_ptr<ModelClass> findByCid(unsigned int cid);
+            shared_ptr<ModelClass> findById(const string& id);
+
 
             unsigned int size(){ return modelRefs.size(); }
             bool has(shared_ptr<ModelClass> model){ return indexOfCid(model->cid()) != INVALID_INDEX; }
@@ -80,6 +82,7 @@ namespace ofxCMS {
         private: // methods
 
             int indexOfCid(unsigned int cid);
+            int indexOfId(const string& _id);
             unsigned int nextCid(){ return ModelClass::nextCid; }
             void setNextCid(unsigned int newNextCid){ ModelClass::nextCid = newNextCid; }
             bool isLocked() const { return vectorLockCount > 0; }
@@ -87,7 +90,7 @@ namespace ofxCMS {
 
         public: // events
 
-            Middleware<ofxCMS::Model> beforeAdd;
+            Middleware<ModelClass> beforeAdd;
             LambdaEvent<ModelClass> modelAddedEvent;
             LambdaEvent<BaseCollection<ModelClass>> initializeEvent;
             LambdaEvent<ModelClass> modelChangeEvent;
@@ -248,6 +251,13 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::findByCid(unsigned in
     return at(idx);
 }
 
+template <class ModelClass>
+shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::findById(const string& id){
+    int idx = indexOfId(id);
+    if(idx == INVALID_INDEX)
+        return nullptr;
+    return at(idx);
+}
 
 template <class ModelClass>
 int ofxCMS::BaseCollection<ModelClass>::indexOfCid(unsigned int cid){
@@ -255,6 +265,19 @@ int ofxCMS::BaseCollection<ModelClass>::indexOfCid(unsigned int cid){
 
     for(auto modelRef : modelRefs){
         if(modelRef->cid() == cid)
+            return idx;
+        idx++;
+    }
+
+    return INVALID_INDEX;
+}
+
+template <class ModelClass>
+int ofxCMS::BaseCollection<ModelClass>::indexOfId(const string& _id){
+    int idx=0;
+
+    for(auto modelRef : modelRefs){
+        if(modelRef->getId() == _id)
             return idx;
         idx++;
     }
