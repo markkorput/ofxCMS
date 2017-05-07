@@ -1,5 +1,5 @@
 [
     {"number": "one"},
-    {"number": "two"},
+    {"number": "two", "id": "#2"},
     {"number": "three"}
 ]

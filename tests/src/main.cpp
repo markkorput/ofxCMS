@@ -510,19 +510,31 @@ class ofApp: public ofxUnitTestsApp{
             modelRef->set("value", "99");
             colRefB->add(modelRef);
             test_eq(colRefA->size(), 2, "");
-            test_eq(colRefA->at(0)->get("value"), "30", "");
-            test_eq(colRefA->at(1)->get("value"), "40", "");
-            // test_eq(colRefB->size(), 8, "");
-            // colRefB->
+            test_eq(colRefA->at(0)->get("value"), "40", "");
+            test_eq(colRefA->at(1)->get("value"), "99", "");
+            test_eq(colRefB->size(), 8, "");
         TEST_END
 
-        TEST_START(read json)
-            auto collectionRef = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
-            // collectionRef->loadJsonFromFile("test.json");
-            test_eq(collectionRef->size(), 3, "");
-            test_eq(collectionRef->at(0)->get("number"), "one", "");
-            test_eq(collectionRef->at(0)->get("number"), "two", "");
-            test_eq(collectionRef->at(0)->get("number"), "three", "");
+        TEST_START(read json array collection)
+            auto colRef = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            colRef->loadJsonFromFile("test.json");
+            test_eq(colRef->size(), 3, "");
+            test_eq(colRef->at(0)->get("number"), "one", "");
+            test_eq(colRef->at(1)->get("number"), "two", "");
+            test_eq(colRef->at(1)->getId(), "#2", "");
+            test_eq(colRef->at(2)->get("number"), "three", "");
+        TEST_END
+
+        TEST_START(read json hash collection)
+            auto colRef = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            colRef->loadJsonFromFile("test_with_keys.json");
+            test_eq(colRef->size(), 3, "");
+            test_eq(colRef->at(0)->get("name"), "the first", "");
+            test_eq(colRef->at(0)->getId(), "id1", "");
+            test_eq(colRef->at(1)->get("name"), "the second", "");
+            test_eq(colRef->at(1)->getId(), "id2", "");
+            test_eq(colRef->at(2)->get("name"), "the 3rd", "");
+            test_eq(colRef->at(2)->getId(), "id3", "");
         TEST_END
     }
 };

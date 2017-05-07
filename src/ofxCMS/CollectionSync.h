@@ -44,7 +44,7 @@ void ofxCMS::CollectionSync<ModelClass>::setup(BaseCollection<ModelClass> *targe
     // actively monitor for new models added to source
     source->modelAddedEvent.addListener([&](ModelClass& model){
         if(!this->target->has(model.cid())){
-            this->target->add(source->findByCid(model.cid())); // need to convert ref var to shared_ptr
+            this->target->add(this->source->findByCid(model.cid())); // need to convert ref var to shared_ptr
         }
     }, this);
 

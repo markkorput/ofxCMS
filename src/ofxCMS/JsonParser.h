@@ -19,9 +19,10 @@ namespace ofxCMS{
     private:
 
         bool parse(const string &jsonText);
+        bool parseWithKeys(const ofxJSONElement &json);
         bool parseModelJson(shared_ptr<ModelClass> modelRef, const string &jsonText);
         string processJsonValue(Json::Value &value);
-        string idFromElement(ofxJSONElement& node);
+        string idFromElement(Json::Value& node);
 
     private:
         BaseCollection<ModelClass> *collection;
@@ -70,13 +71,14 @@ bool ofxCMS::JsonParser<ModelClass>::parse(const string &jsonText){
 
     // make sure we've got an array, we're a collection after all
     if(!json.isArray()){
-        ofLogWarning() << "JSON is not an array:\n--JSON START --\n" << jsonText << "\n--JSON END --";
+        // ofLogWarning() << "JSON is not an array:\n--JSON START --\n" << jsonText << "\n--JSON END --";
+        parseWithKeys(json);
         return false;
     }
 
     if(doRemove){
         collection->each([&](shared_ptr<ModelClass> modelRef){
-            string id = modelRef->id();
+            string id = modelRef->getId();
 
             // assume we'll have to remove
             bool remove_this_model = true;
@@ -115,7 +117,70 @@ bool ofxCMS::JsonParser<ModelClass>::parse(const string &jsonText){
             //  not existing model found? Add a new one
             auto newRef = make_shared<ModelClass>();
             parseModelJson(newRef, ((ofxJSONElement)json[i]).getRawString(false));
-            add(newRef);
+            collection->add(newRef);
+        }
+    }
+
+    return true;
+}
+
+template<class ModelClass>
+bool ofxCMS::JsonParser<ModelClass>::parseWithKeys(const ofxJSONElement &json){
+
+    // // make sure we've got an array, we're a collection after all
+    // if(json.isArray()){
+    //     ofLogWarning() << "JSON is an array:\n--JSON START --\n" << jsonText << "\n--JSON END --";
+    //     return false;
+    // }
+
+    if(doRemove){
+        collection->each([&](shared_ptr<ModelClass> modelRef){
+            string id = modelRef->getId();
+
+            // assume we'll have to remove
+            bool remove_this_model = true;
+
+            // loop over all items in the new json to see if there's a record with the same id
+            vector<string> attrs = json.getMemberNames();
+            for(auto& attr : attrs){
+                // if there's a record with this id, we don't have to do anything
+                if(attr == id){
+                    remove_this_model = false;
+                    return;
+                }
+            }
+
+            // if remove_model is still true, this means that no records with a matching id were found,
+            // meaning this in-memory record was removed from the collection and we should drop it as well
+            if(remove_this_model)
+                collection->removeByCid(modelRef->cid());
+        });
+    }
+
+    // loop over all items in the new json to see if there's a record with the same id
+    vector<string> attrs = json.getMemberNames();
+    for(auto& id : attrs){
+        auto existingRef = id == "" ? nullptr : collection->findById(id);
+
+        // found existing model with same id? update it by setting its json attribute
+        if(existingRef){
+            if(doUpdate){
+                // let the Model attribute changed callbacks deal with further parsing
+                parseModelJson(existingRef, ((ofxJSONElement)json[id]).getRawString(false));
+            }
+
+            continue;
+        }
+
+        if(doCreate){
+            //  not existing model found? Add a new one
+            auto newRef = make_shared<ModelClass>();
+            parseModelJson(newRef, ((ofxJSONElement)json[id]).getRawString(false));
+            string attr_name = "id";
+            while(newRef->has(attr_name))
+                attr_name = "_"+attr_name;
+            newRef->set(attr_name, id);
+            collection->add(newRef);
         }
     }
 
@@ -163,6 +228,6 @@ string ofxCMS::JsonParser<ModelClass>::processJsonValue(Json::Value &value){
 }
 
 template<class ModelClass>
-string ofxCMS::JsonParser<ModelClass>::idFromElement(ofxJSONElement& node){
+string ofxCMS::JsonParser<ModelClass>::idFromElement(Json::Value& node){
     return node["id"].isNull() ? "" : node["id"].asString();
 }

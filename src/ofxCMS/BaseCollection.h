@@ -90,7 +90,7 @@ namespace ofxCMS {
 
         public: // events
 
-            Middleware<ofxCMS::Model> beforeAdd;
+            Middleware<ModelClass> beforeAdd;
             LambdaEvent<ModelClass> modelAddedEvent;
             LambdaEvent<BaseCollection<ModelClass>> initializeEvent;
             LambdaEvent<ModelClass> modelChangeEvent;
@@ -277,7 +277,7 @@ int ofxCMS::BaseCollection<ModelClass>::indexOfId(const string& _id){
     int idx=0;
 
     for(auto modelRef : modelRefs){
-        if(modelRef->id() == _id)
+        if(modelRef->getId() == _id)
             return idx;
         idx++;
     }

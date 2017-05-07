@@ -101,6 +101,6 @@ template<class ModelClass>
 bool ofxCMS::Collection<ModelClass>::loadJsonFromFile(const string& filename){
     JsonParser<ModelClass> jsonParser;
     jsonParser.setup(this, filename);
-    jsonParser.load();
+    return jsonParser.load();
 }
 #endif
