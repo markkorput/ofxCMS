@@ -90,7 +90,7 @@ namespace ofxCMS {
 
         public: // events
 
-            Middleware<ofxCMS::Model> beforeAdd;
+            Middleware<ModelClass> beforeAdd;
             LambdaEvent<ModelClass> modelAddedEvent;
             LambdaEvent<BaseCollection<ModelClass>> initializeEvent;
             LambdaEvent<ModelClass> modelChangeEvent;

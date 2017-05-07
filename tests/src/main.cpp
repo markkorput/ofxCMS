@@ -510,19 +510,18 @@ class ofApp: public ofxUnitTestsApp{
             modelRef->set("value", "99");
             colRefB->add(modelRef);
             test_eq(colRefA->size(), 2, "");
-            test_eq(colRefA->at(0)->get("value"), "30", "");
-            test_eq(colRefA->at(1)->get("value"), "40", "");
-            // test_eq(colRefB->size(), 8, "");
-            // colRefB->
+            test_eq(colRefA->at(0)->get("value"), "40", "");
+            test_eq(colRefA->at(1)->get("value"), "99", "");
+            test_eq(colRefB->size(), 8, "");
         TEST_END
 
         TEST_START(read json)
-            auto colRef = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
-            colRef->loadJsonFromFile("test.json");
-            test_eq(colRef->size(), 3, "");
-            test_eq(colRef->at(0)->get("number"), "one", "");
-            test_eq(colRef->at(1)->get("number"), "two", "");
-            test_eq(colRef->at(2)->get("number"), "three", "");
+        //     auto colRef = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+        //     colRef->loadJsonFromFile("test.json");
+        //     test_eq(colRef->size(), 3, "");
+        //     test_eq(colRef->at(0)->get("number"), "one", "");
+        //     test_eq(colRef->at(1)->get("number"), "two", "");
+        //     test_eq(colRef->at(2)->get("number"), "three", "");
         TEST_END
     }
 };
