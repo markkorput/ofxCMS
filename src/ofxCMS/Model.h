@@ -36,14 +36,15 @@ namespace ofxCMS {
         Model* set(map<string, string> &attrs, bool notify=true);
         string get(const string &attr, string _default = "") const;
 
-        string id() const { return get("id", get("_id", getId())); }
-        string getId() const { return mId; }
+//        string id() const { return get("id", get("_id", getId())); }
+        string getId() const { return get("id", get("_id")); }
         void setCid(unsigned int newCid){ mCid = newCid; }
         unsigned cid() const { return mCid; }
         unsigned int getCid() const { return mCid; }
 
         map<string, string> &attributes(){ return _attributes; }
 
+        bool has(const string& attr) const;
         bool equals(shared_ptr<Model> other){ return other->cid() == cid(); }
 
     public: // static helpers
@@ -64,9 +65,6 @@ namespace ofxCMS {
     private:
 
         map<string, string> _attributes;
-
-        // id; for identifying models across different platforms
-        string mId;
 
         // cid (client-id, for local/internal use)
         unsigned int mCid;

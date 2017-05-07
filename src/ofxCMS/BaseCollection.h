@@ -277,7 +277,7 @@ int ofxCMS::BaseCollection<ModelClass>::indexOfId(const string& _id){
     int idx=0;
 
     for(auto modelRef : modelRefs){
-        if(modelRef->id() == _id)
+        if(modelRef->getId() == _id)
             return idx;
         idx++;
     }
