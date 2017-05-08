@@ -548,8 +548,10 @@ class ofApp: public ofxUnitTestsApp{
             auto managerRef = ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>::singletonRef();
             // load data from json, which automatically creates the necessary collections
             managerRef->loadJsonFromFile("manager_data.json");
+            // verify two collections were loaded from the json file
+            test_eq(managerRef->size(), 2, "");
             // get a model from the products collection
-            managerRef->get("products")->at(0)->get("price", "price not available");
+            test_eq(managerRef->get("products")->at(0)->get("price"), "4.99", "");
         TEST_END
     }
 };

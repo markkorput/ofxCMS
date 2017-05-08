@@ -30,6 +30,7 @@ namespace ofxCMS {
 
 #ifdef OFXCMS_JSON
         bool loadJsonFromFile(const string& filename);
+        bool loadJson(const string& source);
 #endif
 
     private: // attributes
@@ -97,10 +98,19 @@ void ofxCMS::Collection<ModelClass>::filter(FilterFunctor func, bool active){
 }
 
 #ifdef OFXCMS_JSON
+
 template<class ModelClass>
 bool ofxCMS::Collection<ModelClass>::loadJsonFromFile(const string& filename){
     JsonParser<ModelClass> jsonParser;
     jsonParser.setup(this, filename);
     return jsonParser.load();
 }
+
+template<class ModelClass>
+bool ofxCMS::Collection<ModelClass>::loadJson(const string& source){
+    JsonParser<ModelClass> jsonParser;
+    jsonParser.setup(this);
+    return jsonParser.loadRaw(source);
+}
+
 #endif

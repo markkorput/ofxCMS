@@ -1,12 +1,15 @@
 #pragma once
 
+#include "ManagerBase.h"
+
 #ifdef OFXCMS_JSON
-    #include "JsonParser.h"
+    #include "JsonParserManager.h"
 #endif
 
 namespace ofxCMS {
     template<class CollectionClass>
-    class Manager {
+    class Manager : public ManagerBase<CollectionClass>{
+
         private:
             //! a shared_ptr for a global singleton instance
             static shared_ptr<Manager<CollectionClass>> _singleton_ref;
@@ -19,9 +22,10 @@ namespace ofxCMS {
             inline static void deleteSingletonRef();
 
         public:
+#ifdef OFXCMS_JSON
+            bool loadJsonFromFile(const string& path);
+#endif
 
-            void loadJsonFromFile(const string& path);
-            shared_ptr<CollectionClass> get(const string& name);
     };
 }
 
@@ -44,12 +48,13 @@ void ofxCMS::Manager<CollectionClass>::deleteSingletonRef(){
     }
 }
 
-template<class CollectionClass>
-void ofxCMS::Manager<CollectionClass>::loadJsonFromFile(const string& path){
-
-}
+#ifdef OFXCMS_JSON
 
 template<class CollectionClass>
-shared_ptr<CollectionClass> ofxCMS::Manager<CollectionClass>::get(const string& name){
-    return nullptr;
+bool ofxCMS::Manager<CollectionClass>::loadJsonFromFile(const string& path){
+    JsonParserManager<CollectionClass> jsonParser;
+    jsonParser.setup(this, path);
+    return jsonParser.load();
 }
+
+#endif
