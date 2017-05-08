@@ -553,6 +553,10 @@ class ofApp: public ofxUnitTestsApp{
             // get a model from the products collection
             test_eq(managerRef->get("products")->at(0)->get("price"), "4.99", "");
         TEST_END
+
+        TEST_START(Polymorphism)
+            test_eq(CMSMAN->get<CustomModelType>("products")->at(0)->tellMeWhatTypeIAm(), "you are soo custom", ""); 
+        TEST_END
     }
 };
 
