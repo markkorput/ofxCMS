@@ -1,20 +1,9 @@
 // THIS file is almost a direct copy of the ofxLiquidEvent.h class
 #pragma once
 
-//#if __cplusplus<201103L
-//	#define OFXLIQUIDEVENT_USE_TR1
-//#endif
-
-#ifdef OFXCMS_USE_TR1
-	#include <tr1/functional>
-	#define FUNCTION tr1::function
-#else
-	#include <functional>
-	#define FUNCTION std::function
-#endif
-
 #include <map>
 #include <vector>
+#include "lambda.h"
 
 namespace ofxCMS {
 	template<class ArgType>
