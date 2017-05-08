@@ -6,6 +6,13 @@
     #include "JsonParserManager.h"
 #endif
 
+#define CMSMAN_INIT template<>\
+shared_ptr<ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>>\
+    ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>::_singleton_ref = nullptr;
+
+#define CMSMAN ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>::singletonRef()
+#define CMSMAN_DELETE ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>::deleteSingletonRef()
+
 namespace ofxCMS {
     template<class CollectionClass>
     class Manager : public ManagerBase<CollectionClass>{
