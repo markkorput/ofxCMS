@@ -7,6 +7,12 @@
 #define TEST_START(x) {ofLog()<<"CASE: "<<#x;
 #define TEST_END }
 
+// a bit ugly, but static variables need to be created,
+// and since Manager is a template class
+template<>
+shared_ptr<ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>>
+    ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>::_singleton_ref = nullptr;
+
 using namespace ofxCMS;
 
 class ofApp: public ofxUnitTestsApp{
@@ -535,6 +541,17 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(colRef->at(1)->getId(), "id2", "");
             test_eq(colRef->at(2)->get("name"), "the 3rd", "");
             test_eq(colRef->at(2)->getId(), "id3", "");
+        TEST_END
+
+        TEST_START(collection manager)
+            // create singleton collections manager instance
+            auto managerRef = ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>::singletonRef();
+            // load data from json, which automatically creates the necessary collections
+            managerRef->loadJsonFromFile("manager_data.json");
+            // verify two collections were loaded from the json file
+            test_eq(managerRef->size(), 2, "");
+            // get a model from the products collection
+            test_eq(managerRef->get("products")->at(0)->get("price"), "4.99", "");
         TEST_END
     }
 };

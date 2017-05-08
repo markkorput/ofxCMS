@@ -11,10 +11,11 @@ namespace ofxCMS{
         JsonParser() : collection(NULL), doCreate(true), doUpdate(true), doRemove(true){}
         // ~JsonParser(){ destroy(); }
 
-        void setup(BaseCollection<ModelClass> *collection, const string& filename);
+        void setup(BaseCollection<ModelClass> *collection, const string& filename = "");
         // void destroy();
 
         bool load();
+        bool loadRaw(const string& source){ return parse(source); }
 
     private:
 
@@ -72,8 +73,7 @@ bool ofxCMS::JsonParser<ModelClass>::parse(const string &jsonText){
     // make sure we've got an array, we're a collection after all
     if(!json.isArray()){
         // ofLogWarning() << "JSON is not an array:\n--JSON START --\n" << jsonText << "\n--JSON END --";
-        parseWithKeys(json);
-        return false;
+        return parseWithKeys(json);
     }
 
     if(doRemove){
