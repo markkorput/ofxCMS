@@ -10,3 +10,4 @@
 
 #include "ofxCMS/Model.h"
 #include "ofxCMS/Collection.h"
+#include "ofxCMS/Manager.h"
