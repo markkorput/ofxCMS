@@ -536,6 +536,15 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(colRef->at(2)->get("name"), "the 3rd", "");
             test_eq(colRef->at(2)->getId(), "id3", "");
         TEST_END
+
+        TEST_START(collection manager)
+            // create singleton collections manager instance
+            auto managerRef = ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>::singletonRef();
+            // load data from json, which automatically creates the necessary collections
+            managerRef->loadJsonFromFile("manager_data.json");
+            // get a model from the products collection
+            test_eq(managerRef["products"]->at(0)->get("price"), "4.99", "");
+        TEST_END
     }
 };
 
