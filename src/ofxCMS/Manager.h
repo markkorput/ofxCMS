@@ -1,10 +1,13 @@
 #pragma once
 
 #include "ManagerBase.h"
+#include "HttpInterface.h"
 
 #ifdef OFXCMS_JSON
     #include "JsonParserManager.h"
 #endif
+
+
 
 #define CMSMAN_INIT template<>\
 shared_ptr<ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>>\
@@ -28,10 +31,12 @@ namespace ofxCMS {
             //! method to explicitly destroy the singleton instance
             inline static void deleteSingletonRef();
 
-        public:
+            shared_ptr<HttpInterface<CollectionClass>> getHttpInterface(const string& host, int port);
+
 #ifdef OFXCMS_JSON
             bool loadJsonFromFile(const string& path);
 #endif
+
 
     };
 }
@@ -53,6 +58,13 @@ void ofxCMS::Manager<CollectionClass>::deleteSingletonRef(){
         _singleton_ref.reset();
         _singleton_ref = nullptr;
     }
+}
+
+template<class CollectionClass>
+shared_ptr<HttpInterface<CollectionClass>> ofxCMS::Manager<CollectionClass>::getHttpInterface(const string& host, int port){
+    auto httpRef = make_shared<HttpInterface<CollectionClass>>();
+    httpRef->setup(host, port, this);
+    return httpRef;
 }
 
 #ifdef OFXCMS_JSON
