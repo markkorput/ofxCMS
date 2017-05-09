@@ -2,6 +2,9 @@
 
 #include "lib/lambda.h"
 #include "ManagerBase.h"
+#ifdef OFXCMS_OFXSIMPLEHTTP
+    #include "ofxSimpleHttp.h"
+#endif
 
 namespace ofxCMS {
 
@@ -13,28 +16,33 @@ namespace ofxCMS {
             }
 
             shared_ptr<Collection<Model>> collection;
+#ifdef OFXCMS_OFXSIMPLEHTTP
+            ofxSimpleHttpResponse* rawResponse;
+#endif
         };
     }
 
     class QueryBuilder {
     public:
         typedef FUNCTION<void(shared_ptr<Http::Response>)> QueryResultFunc;
-    public:
+
+        QueryBuilder() : collection(""), action("get"){}
         void setCollection(const string& name){ collection = name; }
-        QueryBuilder* get(){ action = "get"; return this; }
         QueryBuilder* onSuccess(QueryResultFunc func){ successFuncs.push_back(func); return this; }
         QueryBuilder* send(){
-            ofLog() << "TODO: send query and put results in repsonse->collection";
-
-            auto responseRef = make_shared<Http::Response>();
-
-            for(auto func : successFuncs){
-                func(responseRef);
-            }
-            return this;
+            sendEvent.notifyListeners(*this);
         }
 
-    private:
+        string getURL(){
+            string url = collection + "/";
+            // std::map<string, string> params;
+            // if limit params['limit'] = ofToString(limit)
+            // for(auto pair : params) ...
+            return url;
+        }
+
+        LambdaEvent<QueryBuilder> sendEvent;
+
         string collection;
         string action;
         vector<QueryResultFunc> successFuncs;
@@ -43,15 +51,24 @@ namespace ofxCMS {
     template<class CollectionClass>
     class HttpInterface {
     public:
-        HttpInterface() : manager(NULL){}
+        HttpInterface() : manager(NULL), rootUrl("/"){}
         void setup(const string& host, int port, ManagerBase<CollectionClass>* manager);
 
-        shared_ptr<QueryBuilder> collection(const string& name);
+        // start building a get request for the specified resource
+        shared_ptr<QueryBuilder> get(const string& name);
+
+        void setRootUrl(const string& url){ rootUrl = url; }
 
     private:
+        std::vector<shared_ptr<QueryBuilder>> queryBuilderRefs;
         ManagerBase<CollectionClass>* manager;
         string host;
         int port;
+        string rootUrl;
+
+#ifdef OFXCMS_OFXSIMPLEHTTP
+        ofxSimpleHttp http;
+#endif
     };
 }
 
@@ -63,8 +80,48 @@ void ofxCMS::HttpInterface<CollectionClass>::setup(const string& host, int port,
 }
 
 template<class CollectionClass>
-shared_ptr<QueryBuilder> ofxCMS::HttpInterface<CollectionClass>::collection(const string& name){
+shared_ptr<QueryBuilder> ofxCMS::HttpInterface<CollectionClass>::get(const string& name){
+    // create query builder
     auto queryBuilderRef = make_shared<QueryBuilder>();
     queryBuilderRef->setCollection(name);
+
+
+    queryBuilderRef->sendEvent.addListener([this](QueryBuilder& builder){
+        string url = "http://"+this->host+":"+ofToString(this->port)+this->rootUrl+builder.getURL();
+
+#ifndef OFXCMS_OFXSIMPLEHTTP
+        ofLogWarning() << "OFXCMS_OFXSIMPLEHTTP not enabled, can't perform actual http request: " << url;
+#else
+        auto notifierRef = this->http.fetchURL(url, true /* yes, we do want notification on success */);
+
+        notifierRef->onSuccess([this, &builder](ofxSimpleHttpResponse& httpResponse){
+            // create our own response object
+            auto responseRef = make_shared<Http::Response>();
+            responseRef->rawResponse = &httpResponse;
+
+            if(httpResponse.ok){
+                // process http response json
+                responseRef->collection->loadJson(httpResponse.responseBody);
+
+                for(auto func : builder.successFuncs){
+                    func(responseRef);
+                }
+            } else {
+                // not ok
+                ofLogWarning() << "Http response status: " << httpResponse.status << ", body: " << httpResponse.responseBody;
+                ofLogWarning() << "TODO: error response callbacks";
+            }
+
+            ofLogWarning() << "TODO: general response callbacks";
+            ofLogWarning() << "TODO: remove query builder from our internal vector";
+            return this;
+        });
+#endif
+    }, this);
+
+    ofLogWarning() << "TODO: perform maintenance and remove all idle (orphaned) request builders";
+
+    // keep track of active query builders
+    queryBuilderRefs.push_back(queryBuilderRef);
     return queryBuilderRef;
 }
