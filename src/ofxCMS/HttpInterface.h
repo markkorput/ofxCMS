@@ -53,6 +53,7 @@ namespace ofxCMS {
     public:
         HttpInterface() : manager(NULL), rootUrl("/"){}
         void setup(const string& host, int port, ManagerBase<CollectionClass>* manager);
+        void update();
 
         // start building a get request for the specified resource
         shared_ptr<QueryBuilder> get(const string& name);
@@ -80,6 +81,13 @@ void ofxCMS::HttpInterface<CollectionClass>::setup(const string& host, int port,
 }
 
 template<class CollectionClass>
+void ofxCMS::HttpInterface<CollectionClass>::update(){
+#ifdef OFXCMS_OFXSIMPLEHTTP
+    http.update();
+#endif
+}
+
+template<class CollectionClass>
 shared_ptr<QueryBuilder> ofxCMS::HttpInterface<CollectionClass>::get(const string& name){
     // create query builder
     auto queryBuilderRef = make_shared<QueryBuilder>();
@@ -92,6 +100,7 @@ shared_ptr<QueryBuilder> ofxCMS::HttpInterface<CollectionClass>::get(const strin
 #ifndef OFXCMS_OFXSIMPLEHTTP
         ofLogWarning() << "OFXCMS_OFXSIMPLEHTTP not enabled, can't perform actual http request: " << url;
 #else
+        ofLogVerbose() << "HTTP GET: " << url;
         auto notifierRef = this->http.fetchURL(url, true /* yes, we do want notification on success */);
 
         notifierRef->onSuccess([this, &builder](ofxSimpleHttpResponse& httpResponse){
