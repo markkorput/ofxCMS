@@ -31,6 +31,7 @@ namespace ofxCMS {
         QueryBuilder* onSuccess(QueryResultFunc func){ successFuncs.push_back(func); return this; }
         QueryBuilder* send(){
             sendEvent.notifyListeners(*this);
+            return this;
         }
 
         string getURL(){
@@ -88,7 +89,7 @@ void ofxCMS::HttpInterface<CollectionClass>::update(){
 }
 
 template<class CollectionClass>
-shared_ptr<QueryBuilder> ofxCMS::HttpInterface<CollectionClass>::get(const string& name){
+shared_ptr<ofxCMS::QueryBuilder> ofxCMS::HttpInterface<CollectionClass>::get(const string& name){
     // create query builder
     auto queryBuilderRef = make_shared<QueryBuilder>();
     queryBuilderRef->setCollection(name);

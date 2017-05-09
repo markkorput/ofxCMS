@@ -44,7 +44,7 @@ namespace ofxCMS {
 // IMPLEMENTATION OF ofxCMS::Manager TEMPLATE CLASS
 
 template<class CollectionClass>
-shared_ptr<Manager<CollectionClass>> ofxCMS::Manager<CollectionClass>::singletonRef(){
+shared_ptr<ofxCMS::Manager<CollectionClass>> ofxCMS::Manager<CollectionClass>::singletonRef(){
     if(!_singleton_ref){
         // ofLogVerbose() << "Creating singleton of class ofxCMS::Manager";
         _singleton_ref = make_shared<Manager<CollectionClass>>();
@@ -61,7 +61,7 @@ void ofxCMS::Manager<CollectionClass>::deleteSingletonRef(){
 }
 
 template<class CollectionClass>
-shared_ptr<HttpInterface<CollectionClass>> ofxCMS::Manager<CollectionClass>::getHttpInterface(const string& host, int port){
+shared_ptr<ofxCMS::HttpInterface<CollectionClass>> ofxCMS::Manager<CollectionClass>::getHttpInterface(const string& host, int port){
     auto httpRef = make_shared<HttpInterface<CollectionClass>>();
     httpRef->setup(host, port, this);
     return httpRef;
