@@ -1,3 +1,4 @@
 ofxUnitTests
 ofxCMS
 ofxJSON
+ofxLambdaEvent

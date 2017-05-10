@@ -1,16 +1,7 @@
 #pragma once
 
 #include "BaseCollection.h"
-
-#ifndef FUNCTION
-    #ifdef OFXCMS_USE_TR1
-    	#include <tr1/functional>
-    	#define FUNCTION tr1::function
-    #else
-    	#include <functional>
-    	#define FUNCTION std::function
-    #endif
-#endif
+#include "ofxLambdaEvent/function.h"
 
 namespace ofxCMS {
     template<class ModelClass>

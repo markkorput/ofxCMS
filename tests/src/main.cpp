@@ -2,7 +2,8 @@
 #include "ofxUnitTests.h"
 // local
 #include "ofxCMS.h"
-#include "ofxCMS/lib/Middleware.h"
+#include "ofxLambdaEvent/Middleware.h"
+
 
 #define TEST_START(x) {ofLog()<<"CASE: "<<#x;
 #define TEST_END }
@@ -14,6 +15,11 @@ shared_ptr<ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>>
     ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>::_singleton_ref = nullptr;
 
 using namespace ofxCMS;
+
+class CustomModel : public Model {
+public:
+    string foo(){ return get("bar"); }
+};
 
 class ofApp: public ofxUnitTestsApp{
 
@@ -568,6 +574,19 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(managerRef->get("products")->at(0)->get("price"), "4.99", "");
         TEST_END
 
+        TEST_START(CustomModel)
+            Collection<CustomModel> col;
+            auto modelRef = col.create();
+            test_eq(modelRef->foo(), "", "");
+
+            col.modelChangeEvent.addListener([](CustomModel& model){
+                model.set("lambda", "called");
+            }, this);
+
+            test_eq(modelRef->get("lambda"), "", "");
+            modelRef->set("some", "change");
+            test_eq(modelRef->get("lambda"), "called", "");
+        TEST_END
         // TEST_START(Polymorphism)
         //     test_eq(CMSMAN->get<CustomModelType>("products")->at(0)->tellMeWhatTypeIAm(), "you are soo custom", "");
         // TEST_END

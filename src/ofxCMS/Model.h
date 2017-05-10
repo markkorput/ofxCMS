@@ -9,7 +9,7 @@
 #pragma once
 
 #include "ofMain.h"
-#include "LambdaEvent.h"
+#include "ofxLambdaEvent/LambdaEvent.h"
 
 #define OFXCMS_INVALID_CID 0
 
