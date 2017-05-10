@@ -1,7 +1,9 @@
 #pragma once
 
 #include "BaseCollection.h"
-#include "ofxJSONElement.h"
+#ifdef OFXCMS_JSON
+    #include "ofxJSONElement.h"
+#endif
 
 namespace ofxCMS{
 
@@ -20,10 +22,13 @@ namespace ofxCMS{
     private:
 
         bool parse(const string &jsonText);
-        bool parseWithKeys(const ofxJSONElement &json);
         bool parseModelJson(shared_ptr<ModelClass> modelRef, const string &jsonText);
+
+#ifdef OFXCMS_JSON
+        bool parseWithKeys(const ofxJSONElement &json);
         string processJsonValue(Json::Value &value);
         string idFromElement(Json::Value& node);
+#endif
 
     private:
         BaseCollection<ModelClass> *collection;
@@ -62,6 +67,10 @@ bool ofxCMS::JsonParser<ModelClass>::load(){
 
 template<class ModelClass>
 bool ofxCMS::JsonParser<ModelClass>::parse(const string &jsonText){
+#ifndef OFXCMS_JSON
+    ofLogWarning() << "ofxCMS json not supported; enable OFXCMS_JSON preprocessor flag";
+    return false;
+#else
     ofxJSONElement json;
 
     // try to parse json, abort if it fails
@@ -122,8 +131,10 @@ bool ofxCMS::JsonParser<ModelClass>::parse(const string &jsonText){
     }
 
     return true;
+#endif
 }
 
+#ifdef OFXCMS_JSON
 template<class ModelClass>
 bool ofxCMS::JsonParser<ModelClass>::parseWithKeys(const ofxJSONElement &json){
 
@@ -186,9 +197,14 @@ bool ofxCMS::JsonParser<ModelClass>::parseWithKeys(const ofxJSONElement &json){
 
     return true;
 }
+#endif
 
 template<class ModelClass>
 bool ofxCMS::JsonParser<ModelClass>::parseModelJson(shared_ptr<ModelClass> modelRef, const string &jsonText){
+#ifndef OFXCMS_JSON
+    ofLogWarning() << "ofxCMS json not supported; enable OFXCMS_JSON preprocessor flag";
+    return false;
+#else
     ofxJSONElement doc;
 
     if(!doc.parse(jsonText)){
@@ -202,8 +218,10 @@ bool ofxCMS::JsonParser<ModelClass>::parseModelJson(shared_ptr<ModelClass> model
     }
 
     return true;
+#endif
 }
 
+#ifdef OFXCMS_JSON
 template<class ModelClass>
 string ofxCMS::JsonParser<ModelClass>::processJsonValue(Json::Value &value){
     //    return value.asString();
@@ -231,3 +249,4 @@ template<class ModelClass>
 string ofxCMS::JsonParser<ModelClass>::idFromElement(Json::Value& node){
     return node["id"].isNull() ? "" : node["id"].asString();
 }
+#endif

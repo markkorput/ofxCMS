@@ -2,12 +2,7 @@
 
 #include "ManagerBase.h"
 #include "HttpInterface.h"
-
-#ifdef OFXCMS_JSON
-    #include "JsonParserManager.h"
-#endif
-
-
+#include "JsonParserManager.h"
 
 #define CMSMAN_INIT template<>\
 shared_ptr<ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>>\
@@ -33,10 +28,7 @@ namespace ofxCMS {
 
             shared_ptr<HttpInterface<CollectionClass>> getHttpInterface(const string& host, int port);
 
-#ifdef OFXCMS_JSON
             bool loadJsonFromFile(const string& path);
-#endif
-
 
     };
 }
@@ -67,13 +59,9 @@ shared_ptr<ofxCMS::HttpInterface<CollectionClass>> ofxCMS::Manager<CollectionCla
     return httpRef;
 }
 
-#ifdef OFXCMS_JSON
-
 template<class CollectionClass>
 bool ofxCMS::Manager<CollectionClass>::loadJsonFromFile(const string& path){
     JsonParserManager<CollectionClass> jsonParser;
     jsonParser.setup(this, path);
     return jsonParser.load();
 }
-
-#endif

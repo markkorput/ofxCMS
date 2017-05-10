@@ -1,7 +1,9 @@
 #pragma once
 
 #include "ManagerBase.h"
-#include "ofxJSONElement.h"
+#ifdef OFXCMS_JSON
+    #include "ofxJSONElement.h"
+#endif
 
 namespace ofxCMS{
 
@@ -16,7 +18,9 @@ namespace ofxCMS{
     private:
 
         bool parse(const string &jsonText);
+#ifdef OFXCMS_JSON
         bool parseWithKeys(const ofxJSONElement &json);
+#endif
 
     private:
         ManagerBase<CollectionClass> *manager;
@@ -51,6 +55,10 @@ bool ofxCMS::JsonParserManager<CollectionClass>::load(){
 
 template<class CollectionClass>
 bool ofxCMS::JsonParserManager<CollectionClass>::parse(const string &jsonText){
+#ifndef OFXCMS_JSON
+    ofLogWarning() << "ofxCMS json not supported; enable OFXCMS_JSON preprocessor flag";
+    return false;
+#else
     ofxJSONElement json;
 
     // try to parse json, abort if it fails
@@ -67,8 +75,10 @@ bool ofxCMS::JsonParserManager<CollectionClass>::parse(const string &jsonText){
 
     ofLogWarning() << "Manager JSON is an array; this is not supported (yet);\n--JSON START --\n" << jsonText << "\n--JSON END --";
     return false;
+#endif
 }
 
+#ifdef OFXCMS_JSON
 template<class CollectionClass>
 bool ofxCMS::JsonParserManager<CollectionClass>::parseWithKeys(const ofxJSONElement &json){
     if(!manager){
@@ -114,3 +124,4 @@ bool ofxCMS::JsonParserManager<CollectionClass>::parseWithKeys(const ofxJSONElem
 
     return true;
 }
+#endif
