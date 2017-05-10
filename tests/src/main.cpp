@@ -21,7 +21,7 @@ class ofApp: public ofxUnitTestsApp{
     shared_ptr<ofxCMS::Model> runCollection(){
         // create collection
         auto collectionRef = make_shared<CollectionClass>();
-        unsigned int cid;
+        CidType cid;
 
         TEST_START(add)
             collectionRef->modelAddedEvent.addListener([](ofxCMS::Model& model){
@@ -70,44 +70,47 @@ class ofApp: public ofxUnitTestsApp{
             auto m = make_shared<ofxCMS::Model>();
             collectionRef->add(m);
             test_eq(collectionRef->size(), 2, "");
-            test_eq(m->cid(), cid+1, "");
+            test_eq(m->cid(), m.get(), "");
         TEST_END
 
-        TEST_START(add existing model with cid)
-            auto m = make_shared<ofxCMS::Model>();
-            m->setCid(cid+20);
-            collectionRef->add(m);
-            test_eq(collectionRef->size(), 3, "");
-            test_eq(m->cid(), cid+20, "");
-        TEST_END
+        // TEST_START(add existing model with cid)
+        //     auto m = make_shared<ofxCMS::Model>();
+        //     m->setCid(cid+20);
+        //     collectionRef->add(m);
+        //     test_eq(collectionRef->size(), 3, "");
+        //     test_eq(m->cid(), cid+20, "");
+        // TEST_END
 
-        TEST_START(check next cid)
-            shared_ptr<ofxCMS::Model> model = collectionRef->create();
-            test_eq(collectionRef->size(), 4, "");
-            test_eq(model->cid(), cid+21, "");
-        TEST_END
+        // TEST_START(check next cid)
+        //     shared_ptr<ofxCMS::Model> model = collectionRef->create();
+        //     test_eq(collectionRef->size(), 4, "");
+        //     test_eq(model->cid(), cid+21, "");
+        // TEST_END
 
         TEST_START(find and remove)
+            int curCount = collectionRef->size();
             // find
-            auto model = collectionRef->at(3);
+            auto model = collectionRef->at(curCount-1);
             test_eq(model.use_count(), 2, "");
 
             // remove by reference
             model = collectionRef->remove(model);
             test_eq(model.use_count(), 1, ""); // local reference is last reference
-            test_eq(collectionRef->size(), 3, "");
+            test_eq(collectionRef->size(), curCount-1, "");
         TEST_END
 
         TEST_START(remove with invalid index)
-            auto model = collectionRef->removeByIndex(3);
+            int curCount = collectionRef->size();
+            auto model = collectionRef->removeByIndex(collectionRef->size()+1);
             test_eq(model == nullptr, true, "");
-            test_eq(collectionRef->size(), 3, "");
+            test_eq(collectionRef->size(), curCount, "");
         TEST_END
 
         TEST_START(remove by index)
-            auto model = collectionRef->removeByIndex(2);
-            test_eq(collectionRef->size(), 2, "");
-            test_eq(model->cid(), cid+20, "");
+            int curCount = collectionRef->size();
+            auto model = collectionRef->removeByIndex(collectionRef->size()-1);
+            test_eq(collectionRef->size(), curCount-1, "");
+            // test_eq(model->cid(), cid+20, "");
             test_eq(model.use_count(), 1, ""); // last reference
         TEST_END
 
@@ -226,7 +229,7 @@ class ofApp: public ofxUnitTestsApp{
         TEST_END
 
         auto modelRef = runCollection<ofxCMS::BaseCollection<ofxCMS::Model>>();
-        unsigned int cid;
+        CidType cid;
 
         TEST_START(change attribute after collection was deallocated)
             modelRef->set("foo101", "bar202");
@@ -248,25 +251,27 @@ class ofApp: public ofxUnitTestsApp{
             colRef->create();
             colRef->create();
             colRef->create();
-            cid = colRef->at(0)->cid();
 
             string removed = "";
+
             colRef->modelRemoveEvent.addListener([&removed](ofxCMS::Model& model){
                 removed += "#"+ofToString(model.cid());
             }, this);
 
+            string expected = "#"+ofToString(colRef->at(4)->cid())+"#"+ofToString(colRef->at(3)->cid());
             colRef->limit(3);
             test_eq(colRef->size(), 3, ""); // two models removed
-            test_eq(removed, "#"+ofToString(cid+4)+"#"+ofToString(cid+3), ""); // remove callback invoked; last two models removed
+            test_eq(removed, expected, ""); // remove callback invoked; last two models removed
 
+            cid = colRef->at(2)->cid();
             colRef->create();
             test_eq(colRef->size(), 3, ""); // nothing added (fifo is false by default)
-            test_eq(colRef->at(2)->cid(), cid+2, "");
+            test_eq(colRef->at(2)->cid(), cid, "");
 
             colRef->setFifo(true);
-            colRef->create();
+            auto newModelRef = colRef->create();
             test_eq(colRef->size(), 3, ""); // nothing added (fifo is false by default)
-            test_eq(colRef->at(2)->cid(), cid+6, "");
+            test_eq(colRef->at(2)->cid(), newModelRef->cid(), "");
 
             colRef->modelRemoveEvent.removeListeners(this);
 

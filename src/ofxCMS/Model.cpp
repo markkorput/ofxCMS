@@ -14,8 +14,6 @@
 
 using namespace ofxCMS;
 
-unsigned int Model::nextCid = 1;
-
 Model* Model::set(const string &attr, const string &value, bool notify){
     string old_value = _attributes[attr];
 

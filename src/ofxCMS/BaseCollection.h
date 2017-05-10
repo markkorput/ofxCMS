@@ -34,16 +34,16 @@ namespace ofxCMS {
             class Modification {
                 public:
                     shared_ptr<ModelClass> addRef;
-                    unsigned int removeCid;
+                    CidType removeCid;
                     bool notify;
                     Modification() : addRef(nullptr), removeCid(OFXCMS_INVALID_CID), notify(true){}
                     Modification(shared_ptr<ModelClass> ref, bool _notify=true) : addRef(ref), removeCid(OFXCMS_INVALID_CID), notify(_notify){}
-                    Modification(int cid, bool _notify=true) : addRef(nullptr), removeCid(cid), notify(_notify){}
+                    Modification(CidType cid, bool _notify=true) : addRef(nullptr), removeCid(cid), notify(_notify){}
             };
 
         public: // methods
 
-            BaseCollection() : vectorLockCount(0){}
+            BaseCollection() : mNextCid(1), vectorLockCount(0){}
             ~BaseCollection(){ destroy(); }
 
             void setup(vector< map<string, string> > &_data);
@@ -57,14 +57,14 @@ namespace ofxCMS {
             // CRUD - Read
             const vector<shared_ptr<ModelClass>> &models(){ return modelRefs; }
             shared_ptr<ModelClass> at(unsigned int idx);
-            shared_ptr<ModelClass> find(unsigned int cid){ return findByCid(cid); }
-            shared_ptr<ModelClass> findByCid(unsigned int cid);
+            shared_ptr<ModelClass> find(CidType cid){ return findByCid(cid); }
+            shared_ptr<ModelClass> findByCid(CidType cid);
             shared_ptr<ModelClass> findById(const string& id);
 
 
             unsigned int size(){ return modelRefs.size(); }
             bool has(shared_ptr<ModelClass> model){ return indexOfCid(model->cid()) != OFXCMS_INVALID_INDEX; }
-            bool has(int cid){ return indexOfCid(cid) != OFXCMS_INVALID_INDEX; }
+            bool has(CidType cid){ return indexOfCid(cid) != OFXCMS_INVALID_INDEX; }
             int randomIndex(){ return size() == 0 ? OFXCMS_INVALID_INDEX : floor(ofRandom(size())); }
             shared_ptr<ModelClass> random(){ return size() == 0 ? nullptr : at(randomIndex()); }
             shared_ptr<ModelClass> previous(shared_ptr<ModelClass> model, bool wrap=false);
@@ -75,15 +75,15 @@ namespace ofxCMS {
 
             // CRUD - Delete
             shared_ptr<ModelClass> remove(shared_ptr<ModelClass> model, bool notify=true);
-            shared_ptr<ModelClass> removeByCid(int cid, bool notify=true);
+            shared_ptr<ModelClass> removeByCid(CidType cid, bool notify=true);
             shared_ptr<ModelClass> removeByIndex(unsigned int index, bool notify=true);
 
         private: // methods
 
-            int indexOfCid(unsigned int cid);
+            int indexOfCid(CidType cid);
             int indexOfId(const string& _id);
-            unsigned int nextCid(){ ofLog() << "next CID"; return ModelClass::nextCid; }
-            void setNextCid(unsigned int newNextCid){ ofLog() << "SET next CID";  ModelClass::nextCid = newNextCid; }
+            CidType nextCid(){ ofLog() << "next CID"; return mNextCid; }
+            void setNextCid(CidType newNextCid){ ofLog() << "SET next CID";  mNextCid = newNextCid; }
             bool isLocked() const { return vectorLockCount > 0; }
             void lock(LockFunctor func);
 
@@ -98,7 +98,7 @@ namespace ofxCMS {
 
         private: // attributes
 
-            // unsigned int mNextId;
+            unsigned int mNextCid;
             std::vector<shared_ptr<ModelClass>> modelRefs;
             unsigned int vectorLockCount;
             std::vector<shared_ptr<Modification>> operationsQueue;
@@ -145,11 +145,10 @@ void ofxCMS::BaseCollection<ModelClass>::add(shared_ptr<ModelClass> modelRef, bo
     // make sure we have a valid CID
     if(modelRef->cid() == OFXCMS_INVALID_CID){
         // ofLogNotice() << "nextId: " << nextCid();
-        modelRef->setCid(nextCid());
-        setNextCid(nextCid()+1);
-    } else if(modelRef->cid() >= nextCid()){
-        ofLogWarning() << "TODO: check if model with this cid doesn't already exist";
-        setNextCid(modelRef->cid() + 1);
+        modelRef->setCid(modelRef.get());
+        // setNextCid(nextCid()+1);
+    } else if(modelRef->cid() != modelRef.get()) {
+        ofLogWarning() << "TODO: model CID doesn't match pointer value. This OK?";
     }
 
     if(!beforeAdd(*modelRef.get()))
@@ -243,7 +242,7 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::at(unsigned int idx){
 }
 
 template <class ModelClass>
-shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::findByCid(unsigned int cid){
+shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::findByCid(CidType cid){
     int idx = indexOfCid(cid);
     if(idx == OFXCMS_INVALID_INDEX)
         return nullptr;
@@ -259,7 +258,7 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::findById(const string
 }
 
 template <class ModelClass>
-int ofxCMS::BaseCollection<ModelClass>::indexOfCid(unsigned int cid){
+int ofxCMS::BaseCollection<ModelClass>::indexOfCid(CidType cid){
     int idx=0;
 
     for(auto modelRef : modelRefs){
@@ -309,7 +308,7 @@ shared_ptr<ModelClass>  ofxCMS::BaseCollection<ModelClass>::remove(shared_ptr<Mo
 }
 
 template <class ModelClass>
-shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::removeByCid(int cid, bool notify){
+shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::removeByCid(CidType cid, bool notify){
     // vector being iterated over? schedule removal operation for when iteration is done
     if(isLocked()){
         operationsQueue.push_back(make_shared<Modification>(cid, notify));

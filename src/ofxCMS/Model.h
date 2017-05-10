@@ -16,6 +16,10 @@
 namespace ofxCMS {
     // a key-value pair model that fires notifications when attributes change,
     // kinda based on the Backbone.js Models
+    class Model;
+
+    typedef Model* CidType;
+
     class Model{
 
     public:
@@ -30,8 +34,6 @@ namespace ofxCMS {
 
     public:
 
-        static unsigned int nextCid;
-
         Model() : mCid(OFXCMS_INVALID_CID){
         }
 
@@ -41,9 +43,9 @@ namespace ofxCMS {
 
 //        string id() const { return get("id", get("_id", getId())); }
         string getId() const { return get("id", get("_id")); }
-        void setCid(unsigned int newCid){ mCid = newCid; }
-        unsigned cid() const { return mCid; }
-        unsigned int getCid() const { return mCid; }
+        void setCid(CidType newCid){ mCid = newCid; }
+        CidType cid() const { return mCid; }
+        CidType getCid() const { return mCid; }
 
         map<string, string> &attributes(){ return _attributes; }
 
@@ -70,7 +72,7 @@ namespace ofxCMS {
         map<string, string> _attributes;
 
         // cid (client-id, for local/internal use)
-        unsigned int mCid;
+        CidType mCid;
 
     }; // class Model
 
