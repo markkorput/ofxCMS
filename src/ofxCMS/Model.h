@@ -11,6 +11,8 @@
 #include "ofMain.h"
 #include "LambdaEvent.h"
 
+#define OFXCMS_INVALID_CID 0
+
 namespace ofxCMS {
     // a key-value pair model that fires notifications when attributes change,
     // kinda based on the Backbone.js Models
@@ -28,9 +30,10 @@ namespace ofxCMS {
 
     public:
 
-        static const unsigned int INVALID_CID = 0;
         static unsigned int nextCid;
-        Model();
+
+        Model() : mCid(OFXCMS_INVALID_CID){
+        }
 
         Model* set(const string &attr, const string &value, bool notify = true);
         Model* set(map<string, string> &attrs, bool notify=true);

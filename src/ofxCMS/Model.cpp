@@ -16,9 +16,6 @@ using namespace ofxCMS;
 
 unsigned int Model::nextCid = 1;
 
-Model::Model() : mCid(INVALID_CID){
-}
-
 Model* Model::set(const string &attr, const string &value, bool notify){
     string old_value = _attributes[attr];
 
@@ -26,7 +23,7 @@ Model* Model::set(const string &attr, const string &value, bool notify){
     onSetAttribute(attr, value);
 
     if(notify && old_value != value){
-        static AttrChangeArgs args;
+        AttrChangeArgs args;
         args.model = this;
         args.attr = attr;
         args.value = value;
