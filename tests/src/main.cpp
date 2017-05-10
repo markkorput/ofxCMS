@@ -543,6 +543,15 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(colRef->at(2)->getId(), "id3", "");
         TEST_END
 
+        TEST_START(load and reload json with number values)
+            auto colRef = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            colRef->loadJsonFromFile("properties.json");
+            test_eq(colRef->size(), 2, "");
+            test_eq(colRef->findById(".MyProgressBar")->get("size_y"), "25", "");
+            colRef->loadJsonFromFile("properties2.json");
+            test_eq(colRef->findById(".MyProgressBar")->get("size_y"), "30", "");
+        TEST_END
+
         TEST_START(collection manager)
             // create singleton collections manager instance
             auto managerRef = ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>::singletonRef();
