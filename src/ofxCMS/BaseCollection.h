@@ -8,7 +8,8 @@
 
 #pragma once
 
-#include "lib/Middleware.h"
+#include "ofxLambdaEvent/LambdaEvent.h"
+#include "ofxLambdaEvent/Middleware.h"
 
 #define OFXCMS_INVALID_INDEX (-1)
 
@@ -92,7 +93,6 @@ namespace ofxCMS {
             Middleware<ModelClass> beforeAdd;
             LambdaEvent<ModelClass> modelAddedEvent;
             LambdaEvent<BaseCollection<ModelClass>> initializeEvent;
-            LambdaEvent<ModelClass> modelChangeEvent;
             LambdaEvent<AttrChangeArgs> attributeChangeEvent;
             LambdaEvent<ModelClass> modelRemoveEvent;
 

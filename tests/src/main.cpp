@@ -2,7 +2,8 @@
 #include "ofxUnitTests.h"
 // local
 #include "ofxCMS.h"
-#include "ofxCMS/lib/Middleware.h"
+#include "ofxLambdaEvent/Middleware.h"
+
 
 #define TEST_START(x) {ofLog()<<"CASE: "<<#x;
 #define TEST_END }

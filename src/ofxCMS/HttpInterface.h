@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lib/lambda.h"
+#include "ofxLambdaEvent/function.h"
 #include "ManagerBase.h"
 #ifdef OFXCMS_OFXSIMPLEHTTP
     #include "ofxSimpleHttp.h"
