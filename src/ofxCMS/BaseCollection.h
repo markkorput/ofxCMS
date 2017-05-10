@@ -93,6 +93,7 @@ namespace ofxCMS {
             Middleware<ModelClass> beforeAdd;
             LambdaEvent<ModelClass> modelAddedEvent;
             LambdaEvent<BaseCollection<ModelClass>> initializeEvent;
+            LambdaEvent<ModelClass> modelChangeEvent;
             LambdaEvent<AttrChangeArgs> attributeChangeEvent;
             LambdaEvent<ModelClass> modelRemoveEvent;
 
@@ -157,7 +158,9 @@ void ofxCMS::BaseCollection<ModelClass>::add(shared_ptr<ModelClass> modelRef, bo
     // add to our collection
     modelRefs.push_back(modelRef);
 
-    modelChangeEvent.forward(modelRef->changeEvent);
+    modelRef->changeEvent.addListener([this](Model& m){
+        modelChangeEvent.notifyListeners(*(this->findByCid(m.cid()).get()));
+    }, this);
 
     modelRef->attributeChangeEvent.addListener([this](ofxCMS::Model::AttrChangeArgs& args) -> void {
         // turn regular pointer into a shared_ptr (Ref) by looking it up in our internal ref list
@@ -327,7 +330,7 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::removeByCid(CidType c
 
     // remove callbacks
     modelRef->attributeChangeEvent.removeListeners(this);
-    this->modelChangeEvent.stopForward(modelRef->changeEvent);
+    modelRef->changeEvent.removeListeners(this);
 
     // remove
     modelRefs.erase(modelRefs.begin() + idx);
