@@ -158,6 +158,33 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(collectionRef->next(collectionRef->at(1)) == nullptr, true, "");
         TEST_END
 
+        TEST_START(model copy)
+            auto refA = collectionRef->create();
+            auto refB = collectionRef->create();
+            refA->set("id", "1");
+            refA->set("_id", "_1");
+            refA->set("firstname", "john");
+            refA->set("lastname", "doe");
+            refB->set("id", "2");
+            refB->set("_id", "_2");
+            test_eq(refB->get("firstname"), "", "");
+            test_eq(refB->get("lastname"), "", "");
+            refB->copy(refA); // copy, but keep id and _id properties
+            test_eq(refB->get("id"), "2", "");
+            test_eq(refB->get("_id"), "_2", "");
+            test_eq(refB->get("firstname"), "john", "");
+            test_eq(refB->get("lastname"), "doe", "");
+            refA->set("firstname", "jane");
+            refB->copy(refA, true); // copy including id and _id properties
+            test_eq(refB->get("id"), "1", "");
+            test_eq(refB->get("_id"), "_1", "");
+            test_eq(refB->get("firstname"), "jane", "");
+            test_eq(refB->get("lastname"), "doe", "");
+        TEST_END
+
+        TEST_START(model each)
+            ofLogWarning() << "TODO";
+        TEST_END
         // return an instance
         return collectionRef->create();
     }

@@ -55,6 +55,30 @@ bool Model::has(const string& attr) const {
     return (_attributes.find(attr) == _attributes.end()) ? false : true;
 }
 
+void Model::each(AttrIterateFunc func){
+    ofLogWarning() << "TODO: locking mechanism ot protect attribute map from getting modified while iterating over it";
+    for(auto pair : _attributes){
+        func(pair.first, pair.second);
+    }
+}
+
+void Model::copy(shared_ptr<Model> otherRef, bool also_ids){
+    if(!otherRef){
+        ofLogWarning() << "ofxCMS::Model.copy got nullptr";
+        return;
+    }
+
+    copy(*otherRef.get(), also_ids);
+}
+
+void Model::copy(Model& other, bool also_ids){
+    other.each([this, also_ids](const string& key, const string& value){
+        if((key != "id" && key != "_id") || also_ids)
+            this->set(key, value);
+    });
+}
+
+
 #ifdef OFXCMS_JSON
 // Convenience method with built-in support for MongoDB-style id format
 vector<string> Model::jsonArrayToIdsVector(string jsonText){

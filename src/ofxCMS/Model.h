@@ -20,9 +20,12 @@ namespace ofxCMS {
 
     typedef Model* CidType;
 
+
     class Model{
 
     public:
+
+        typedef FUNCTION<void(const string&, const string&)> AttrIterateFunc;
 
         // used in attributeChangeEvent notifications
         class AttrChangeArgs {
@@ -47,10 +50,14 @@ namespace ofxCMS {
         CidType cid() const { return mCid; }
         CidType getCid() const { return mCid; }
 
-        map<string, string> &attributes(){ return _attributes; }
+        const map<string, string> &attributes() const { return _attributes; }
 
         bool has(const string& attr) const;
         bool equals(shared_ptr<Model> other){ return other->cid() == cid(); }
+
+        void each(AttrIterateFunc func);
+        void copy(shared_ptr<Model> otherRef, bool also_ids=false);
+        void copy(Model& other, bool also_ids=false);
 
     public: // static helpers
 #ifdef OFXCMS_JSON
