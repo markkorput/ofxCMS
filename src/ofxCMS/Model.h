@@ -9,14 +9,23 @@
 #pragma once
 
 #include "ofMain.h"
-#include "LambdaEvent.h"
+#include "ofxLambdaEvent/LambdaEvent.h"
+
+#define OFXCMS_INVALID_CID 0
 
 namespace ofxCMS {
     // a key-value pair model that fires notifications when attributes change,
     // kinda based on the Backbone.js Models
+    class Model;
+
+    typedef Model* CidType;
+
+
     class Model{
 
     public:
+
+        typedef FUNCTION<void(const string&, const string&)> AttrIterateFunc;
 
         // used in attributeChangeEvent notifications
         class AttrChangeArgs {
@@ -28,9 +37,8 @@ namespace ofxCMS {
 
     public:
 
-        static const unsigned int INVALID_CID = 0;
-        static unsigned int nextCid;
-        Model();
+        Model() : mCid(OFXCMS_INVALID_CID){
+        }
 
         Model* set(const string &attr, const string &value, bool notify = true);
         Model* set(map<string, string> &attrs, bool notify=true);
@@ -38,14 +46,18 @@ namespace ofxCMS {
 
 //        string id() const { return get("id", get("_id", getId())); }
         string getId() const { return get("id", get("_id")); }
-        void setCid(unsigned int newCid){ mCid = newCid; }
-        unsigned cid() const { return mCid; }
-        unsigned int getCid() const { return mCid; }
+        void setCid(CidType newCid){ mCid = newCid; }
+        CidType cid() const { return mCid; }
+        CidType getCid() const { return mCid; }
 
-        map<string, string> &attributes(){ return _attributes; }
+        const map<string, string> &attributes() const { return _attributes; }
 
         bool has(const string& attr) const;
         bool equals(shared_ptr<Model> other){ return other->cid() == cid(); }
+
+        void each(AttrIterateFunc func);
+        void copy(shared_ptr<Model> otherRef, bool also_ids=false);
+        void copy(Model& other, bool also_ids=false);
 
     public: // static helpers
 #ifdef OFXCMS_JSON
@@ -67,7 +79,7 @@ namespace ofxCMS {
         map<string, string> _attributes;
 
         // cid (client-id, for local/internal use)
-        unsigned int mCid;
+        CidType mCid;
 
     }; // class Model
 

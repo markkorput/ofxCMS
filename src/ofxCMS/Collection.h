@@ -4,9 +4,7 @@
 #include "CollectionLimit.h"
 #include "CollectionSync.h"
 #include "CollectionFilter.h"
-#ifdef OFXCMS_JSON
-    #include "JsonParser.h"
-#endif
+#include "JsonParser.h"
 
 namespace ofxCMS {
     template<class ModelClass>
@@ -28,10 +26,8 @@ namespace ofxCMS {
         void reject(const string& attr, const string& value, bool active=true);
         void filter(FilterFunctor func, bool active=true);
 
-#ifdef OFXCMS_JSON
         bool loadJsonFromFile(const string& filename);
         bool loadJson(const string& source);
-#endif
 
     private: // attributes
         CollectionLimit<ModelClass> collectionLimit;
@@ -97,8 +93,6 @@ void ofxCMS::Collection<ModelClass>::filter(FilterFunctor func, bool active){
         collectionFilters.push_back(filter);
 }
 
-#ifdef OFXCMS_JSON
-
 template<class ModelClass>
 bool ofxCMS::Collection<ModelClass>::loadJsonFromFile(const string& filename){
     JsonParser<ModelClass> jsonParser;
@@ -112,5 +106,3 @@ bool ofxCMS::Collection<ModelClass>::loadJson(const string& source){
     jsonParser.setup(this);
     return jsonParser.loadRaw(source);
 }
-
-#endif

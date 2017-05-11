@@ -2,24 +2,22 @@
 
 #include "BaseCollection.h"
 
+#define OFXCMS_NO_LIMIT 0
+
 namespace ofxCMS {
 
     template<class ModelClass>
     class CollectionLimit {
-        public: // types a contants
-
-            const static unsigned int NO_LIMIT = 0;
-
         public: // methods
 
-            CollectionLimit() : collection(NULL), mLimit(NO_LIMIT), bFifo(false){}
+            CollectionLimit() : collection(NULL), mLimit(OFXCMS_NO_LIMIT), bFifo(false){}
             ~CollectionLimit(){ destroy(); }
 
             void setup(BaseCollection<ModelClass>* collection, unsigned int amount);
             void destroy();
 
             // bool limitReached(){ return mLimit != NO_LIMIT && collection->size() >= mLimit; }
-            bool limitExceeded(){ return mLimit != NO_LIMIT && collection->size() > mLimit; }
+            bool limitExceeded(){ return mLimit != OFXCMS_NO_LIMIT && collection->size() > mLimit; }
             void setFifo(bool fifo){ bFifo = fifo; }
             // bool getFifo(){ return bFifo; }
 

@@ -1,10 +1,15 @@
 #pragma once
 
 #include "ManagerBase.h"
+#include "HttpInterface.h"
+#include "JsonParserManager.h"
 
-#ifdef OFXCMS_JSON
-    #include "JsonParserManager.h"
-#endif
+#define CMSMAN_INIT template<>\
+shared_ptr<ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>>\
+    ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>::_singleton_ref = nullptr;
+
+#define CMSMAN ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>::singletonRef()
+#define CMSMAN_DELETE ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>::deleteSingletonRef()
 
 namespace ofxCMS {
     template<class CollectionClass>
@@ -21,10 +26,9 @@ namespace ofxCMS {
             //! method to explicitly destroy the singleton instance
             inline static void deleteSingletonRef();
 
-        public:
-#ifdef OFXCMS_JSON
+            shared_ptr<HttpInterface<CollectionClass>> getHttpInterface(const string& host, int port);
+
             bool loadJsonFromFile(const string& path);
-#endif
 
     };
 }
@@ -32,7 +36,7 @@ namespace ofxCMS {
 // IMPLEMENTATION OF ofxCMS::Manager TEMPLATE CLASS
 
 template<class CollectionClass>
-shared_ptr<Manager<CollectionClass>> ofxCMS::Manager<CollectionClass>::singletonRef(){
+shared_ptr<ofxCMS::Manager<CollectionClass>> ofxCMS::Manager<CollectionClass>::singletonRef(){
     if(!_singleton_ref){
         // ofLogVerbose() << "Creating singleton of class ofxCMS::Manager";
         _singleton_ref = make_shared<Manager<CollectionClass>>();
@@ -48,7 +52,12 @@ void ofxCMS::Manager<CollectionClass>::deleteSingletonRef(){
     }
 }
 
-#ifdef OFXCMS_JSON
+template<class CollectionClass>
+shared_ptr<ofxCMS::HttpInterface<CollectionClass>> ofxCMS::Manager<CollectionClass>::getHttpInterface(const string& host, int port){
+    auto httpRef = make_shared<HttpInterface<CollectionClass>>();
+    httpRef->setup(host, port, this);
+    return httpRef;
+}
 
 template<class CollectionClass>
 bool ofxCMS::Manager<CollectionClass>::loadJsonFromFile(const string& path){
@@ -56,5 +65,3 @@ bool ofxCMS::Manager<CollectionClass>::loadJsonFromFile(const string& path){
     jsonParser.setup(this, path);
     return jsonParser.load();
 }
-
-#endif

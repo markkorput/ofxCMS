@@ -2,7 +2,8 @@
 #include "ofxUnitTests.h"
 // local
 #include "ofxCMS.h"
-#include "ofxCMS/lib/Middleware.h"
+#include "ofxLambdaEvent/Middleware.h"
+
 
 #define TEST_START(x) {ofLog()<<"CASE: "<<#x;
 #define TEST_END }
@@ -15,13 +16,18 @@ shared_ptr<ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>>
 
 using namespace ofxCMS;
 
+class CustomModel : public Model {
+public:
+    string foo(){ return get("bar"); }
+};
+
 class ofApp: public ofxUnitTestsApp{
 
     template<typename CollectionClass>
     shared_ptr<ofxCMS::Model> runCollection(){
         // create collection
         auto collectionRef = make_shared<CollectionClass>();
-        unsigned int cid;
+        CidType cid;
 
         TEST_START(add)
             collectionRef->modelAddedEvent.addListener([](ofxCMS::Model& model){
@@ -70,44 +76,47 @@ class ofApp: public ofxUnitTestsApp{
             auto m = make_shared<ofxCMS::Model>();
             collectionRef->add(m);
             test_eq(collectionRef->size(), 2, "");
-            test_eq(m->cid(), cid+1, "");
+            test_eq(m->cid(), m.get(), "");
         TEST_END
 
-        TEST_START(add existing model with cid)
-            auto m = make_shared<ofxCMS::Model>();
-            m->setCid(cid+20);
-            collectionRef->add(m);
-            test_eq(collectionRef->size(), 3, "");
-            test_eq(m->cid(), cid+20, "");
-        TEST_END
+        // TEST_START(add existing model with cid)
+        //     auto m = make_shared<ofxCMS::Model>();
+        //     m->setCid(cid+20);
+        //     collectionRef->add(m);
+        //     test_eq(collectionRef->size(), 3, "");
+        //     test_eq(m->cid(), cid+20, "");
+        // TEST_END
 
-        TEST_START(check next cid)
-            shared_ptr<ofxCMS::Model> model = collectionRef->create();
-            test_eq(collectionRef->size(), 4, "");
-            test_eq(model->cid(), cid+21, "");
-        TEST_END
+        // TEST_START(check next cid)
+        //     shared_ptr<ofxCMS::Model> model = collectionRef->create();
+        //     test_eq(collectionRef->size(), 4, "");
+        //     test_eq(model->cid(), cid+21, "");
+        // TEST_END
 
         TEST_START(find and remove)
+            int curCount = collectionRef->size();
             // find
-            auto model = collectionRef->at(3);
+            auto model = collectionRef->at(curCount-1);
             test_eq(model.use_count(), 2, "");
 
             // remove by reference
             model = collectionRef->remove(model);
             test_eq(model.use_count(), 1, ""); // local reference is last reference
-            test_eq(collectionRef->size(), 3, "");
+            test_eq(collectionRef->size(), curCount-1, "");
         TEST_END
 
         TEST_START(remove with invalid index)
-            auto model = collectionRef->removeByIndex(3);
+            int curCount = collectionRef->size();
+            auto model = collectionRef->removeByIndex(collectionRef->size()+1);
             test_eq(model == nullptr, true, "");
-            test_eq(collectionRef->size(), 3, "");
+            test_eq(collectionRef->size(), curCount, "");
         TEST_END
 
         TEST_START(remove by index)
-            auto model = collectionRef->removeByIndex(2);
-            test_eq(collectionRef->size(), 2, "");
-            test_eq(model->cid(), cid+20, "");
+            int curCount = collectionRef->size();
+            auto model = collectionRef->removeByIndex(collectionRef->size()-1);
+            test_eq(collectionRef->size(), curCount-1, "");
+            // test_eq(model->cid(), cid+20, "");
             test_eq(model.use_count(), 1, ""); // last reference
         TEST_END
 
@@ -149,6 +158,33 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(collectionRef->next(collectionRef->at(1)) == nullptr, true, "");
         TEST_END
 
+        TEST_START(model copy)
+            auto refA = collectionRef->create();
+            auto refB = collectionRef->create();
+            refA->set("id", "1");
+            refA->set("_id", "_1");
+            refA->set("firstname", "john");
+            refA->set("lastname", "doe");
+            refB->set("id", "2");
+            refB->set("_id", "_2");
+            test_eq(refB->get("firstname"), "", "");
+            test_eq(refB->get("lastname"), "", "");
+            refB->copy(refA); // copy, but keep id and _id properties
+            test_eq(refB->get("id"), "2", "");
+            test_eq(refB->get("_id"), "_2", "");
+            test_eq(refB->get("firstname"), "john", "");
+            test_eq(refB->get("lastname"), "doe", "");
+            refA->set("firstname", "jane");
+            refB->copy(refA, true); // copy including id and _id properties
+            test_eq(refB->get("id"), "1", "");
+            test_eq(refB->get("_id"), "_1", "");
+            test_eq(refB->get("firstname"), "jane", "");
+            test_eq(refB->get("lastname"), "doe", "");
+        TEST_END
+
+        TEST_START(model each)
+            ofLogWarning() << "TODO";
+        TEST_END
         // return an instance
         return collectionRef->create();
     }
@@ -226,7 +262,7 @@ class ofApp: public ofxUnitTestsApp{
         TEST_END
 
         auto modelRef = runCollection<ofxCMS::BaseCollection<ofxCMS::Model>>();
-        unsigned int cid;
+        CidType cid;
 
         TEST_START(change attribute after collection was deallocated)
             modelRef->set("foo101", "bar202");
@@ -248,25 +284,27 @@ class ofApp: public ofxUnitTestsApp{
             colRef->create();
             colRef->create();
             colRef->create();
-            cid = colRef->at(0)->cid();
 
             string removed = "";
+
             colRef->modelRemoveEvent.addListener([&removed](ofxCMS::Model& model){
                 removed += "#"+ofToString(model.cid());
             }, this);
 
+            string expected = "#"+ofToString(colRef->at(4)->cid())+"#"+ofToString(colRef->at(3)->cid());
             colRef->limit(3);
             test_eq(colRef->size(), 3, ""); // two models removed
-            test_eq(removed, "#"+ofToString(cid+4)+"#"+ofToString(cid+3), ""); // remove callback invoked; last two models removed
+            test_eq(removed, expected, ""); // remove callback invoked; last two models removed
 
+            cid = colRef->at(2)->cid();
             colRef->create();
             test_eq(colRef->size(), 3, ""); // nothing added (fifo is false by default)
-            test_eq(colRef->at(2)->cid(), cid+2, "");
+            test_eq(colRef->at(2)->cid(), cid, "");
 
             colRef->setFifo(true);
-            colRef->create();
+            auto newModelRef = colRef->create();
             test_eq(colRef->size(), 3, ""); // nothing added (fifo is false by default)
-            test_eq(colRef->at(2)->cid(), cid+6, "");
+            test_eq(colRef->at(2)->cid(), newModelRef->cid(), "");
 
             colRef->modelRemoveEvent.removeListeners(this);
 
@@ -543,6 +581,15 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(colRef->at(2)->getId(), "id3", "");
         TEST_END
 
+        TEST_START(load and reload json with number values)
+            auto colRef = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
+            colRef->loadJsonFromFile("properties.json");
+            test_eq(colRef->size(), 2, "");
+            test_eq(colRef->findById(".MyProgressBar")->get("size_y"), "25", "");
+            colRef->loadJsonFromFile("properties2.json");
+            test_eq(colRef->findById(".MyProgressBar")->get("size_y"), "30", "");
+        TEST_END
+
         TEST_START(collection manager)
             // create singleton collections manager instance
             auto managerRef = ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>::singletonRef();
@@ -553,6 +600,23 @@ class ofApp: public ofxUnitTestsApp{
             // get a model from the products collection
             test_eq(managerRef->get("products")->at(0)->get("price"), "4.99", "");
         TEST_END
+
+        TEST_START(CustomModel)
+            Collection<CustomModel> col;
+            auto modelRef = col.create();
+            test_eq(modelRef->foo(), "", "");
+
+            col.modelChangeEvent.addListener([](CustomModel& model){
+                model.set("lambda", "called");
+            }, this);
+
+            test_eq(modelRef->get("lambda"), "", "");
+            modelRef->set("some", "change");
+            test_eq(modelRef->get("lambda"), "called", "");
+        TEST_END
+        // TEST_START(Polymorphism)
+        //     test_eq(CMSMAN->get<CustomModelType>("products")->at(0)->tellMeWhatTypeIAm(), "you are soo custom", "");
+        // TEST_END
     }
 };
 

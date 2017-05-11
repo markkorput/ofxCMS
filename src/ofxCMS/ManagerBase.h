@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ofxLambdaEvent/function.h"
+
 namespace ofxCMS {
     template<class CollectionClass>
     class ManagerBase {
