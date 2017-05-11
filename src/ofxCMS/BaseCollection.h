@@ -60,7 +60,7 @@ namespace ofxCMS {
             shared_ptr<ModelClass> at(unsigned int idx);
             shared_ptr<ModelClass> find(CidType cid){ return findByCid(cid); }
             shared_ptr<ModelClass> findByCid(CidType cid);
-            shared_ptr<ModelClass> findById(const string& id);
+            shared_ptr<ModelClass> findById(const string& id, bool create=false);
 
 
             unsigned int size(){ return modelRefs.size(); }
@@ -253,11 +253,18 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::findByCid(CidType cid
 }
 
 template <class ModelClass>
-shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::findById(const string& id){
+shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::findById(const string& id, bool create){
     int idx = indexOfId(id);
-    if(idx == OFXCMS_INVALID_INDEX)
+    // found; return found instance
+    if(idx != OFXCMS_INVALID_INDEX)
+        return at(idx);
+    // id not found
+    if(!create)
         return nullptr;
-    return at(idx);
+
+    auto newInstanceRef = this->create();
+    newInstanceRef->set("id", id);
+    return newInstanceRef;
 }
 
 template <class ModelClass>

@@ -185,6 +185,19 @@ class ofApp: public ofxUnitTestsApp{
         TEST_START(model each)
             ofLogWarning() << "TODO";
         TEST_END
+
+        TEST_START(findById)
+            CollectionClass col;
+            test_eq(col.size(), 0, "");
+            auto modelRef = col.findById("foo");
+            test_eq(modelRef == nullptr, true, "");
+            test_eq(col.size(), 0, "");
+            modelRef = col.findById("foo", true /* create if not found */);
+            test_eq(modelRef == nullptr, false, "");
+            test_eq(col.size(), 1, "");
+            test_eq(col.findById("foo") == modelRef, true, "");
+        TEST_END
+
         // return an instance
         return collectionRef->create();
     }
