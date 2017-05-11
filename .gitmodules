@@ -1,0 +1,3 @@
+[submodule "dependencies/ofxLambdaEvent"]
+	path = dependencies/ofxLambdaEvent
+	url = git@github.com:markkorput/ofxLambdaEvent.git
