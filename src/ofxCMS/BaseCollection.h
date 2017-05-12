@@ -61,6 +61,7 @@ namespace ofxCMS {
             shared_ptr<ModelClass> find(CidType cid){ return findByCid(cid); }
             shared_ptr<ModelClass> findByCid(CidType cid);
             shared_ptr<ModelClass> findById(const string& id, bool create=false);
+            std::vector<shared_ptr<ModelClass>> findByIds(const vector<string> ids, bool create=false);
 
 
             unsigned int size(){ return modelRefs.size(); }
@@ -265,6 +266,19 @@ shared_ptr<ModelClass> ofxCMS::BaseCollection<ModelClass>::findById(const string
     auto newInstanceRef = this->create();
     newInstanceRef->set("id", id);
     return newInstanceRef;
+}
+
+template <class ModelClass>
+std::vector<shared_ptr<ModelClass>> ofxCMS::BaseCollection<ModelClass>::findByIds(const vector<string> ids, bool create){
+    std::vector<shared_ptr<ModelClass>> result;
+
+    for(auto& _id : ids){
+        auto foundRef = findById(_id, create);
+        if(foundRef)
+            result.push_back(foundRef);
+    }
+
+    return result;
 }
 
 template <class ModelClass>
