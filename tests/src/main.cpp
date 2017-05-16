@@ -7,15 +7,174 @@
 // initialize singleton instance
 CMSMAN_INIT
 
-using namespace ofxCMS;
-
 class ofApp: public ofxUnitTestsApp{
+
+    template<typename CollectionClass>
+    void testBaseCollection(){
+        auto collectionRef = make_shared<CollectionClass>();
+        ofxCMS::CidType cid;
+
+        TEST_START(add)
+            collectionRef->modelAddedEvent.addListener([](ofxCMS::Model& model){
+                model.set("foo", "barr52");
+            }, this);
+
+            // create first model
+            test_eq(collectionRef->size(), 0, "");
+            auto modelRef = collectionRef->create();
+
+            test_eq(modelRef.use_count(), 2, "");
+
+            collectionRef->modelAddedEvent.removeListeners(this);
+
+            test_eq(collectionRef->size(), 1, "");
+            test_eq(modelRef->get("foo"), "barr52", "");
+
+            cid = modelRef->cid();
+            // get non existing attribute
+            test_eq(modelRef->get("name"), "", "");
+            // get non existing attribute with default value
+            test_eq(modelRef->get("name", "John Doe"), "John Doe", "");
+        TEST_END
+
+        TEST_START(attribute change callbacks)
+            auto modelRef = collectionRef->at(0);
+
+            // changing attribute should trigger callbacks
+            modelRef->attributeChangeEvent.addListener([](ofxCMS::Model::AttrChangeArgs& args) -> void {
+                args.model->set(args.attr, args.model->get(args.attr) + " (Model Callback OK)", false /* dony notify */);
+            }, this);
+
+            collectionRef->attributeChangeEvent.addListener([](ofxCMS::BaseCollection<ofxCMS::Model>::AttrChangeArgs& args) -> void {
+                args.modelRef->set(args.attr, args.modelRef->get(args.attr) + " (Collection Callback OK)", false /* dony notify */);
+            }, this);
+
+            // set name and trigger callback(s)
+            modelRef->set("name", "Brian Fury");
+            test_eq(modelRef->get("name"), "Brian Fury (Collection Callback OK) (Model Callback OK)", "");
+
+            collectionRef->attributeChangeEvent.removeListeners(this);
+            modelRef->attributeChangeEvent.removeListeners(this);
+        TEST_END
+
+        TEST_START(add existing model without cid)
+            auto m = make_shared<ofxCMS::Model>();
+            collectionRef->add(m);
+            test_eq(collectionRef->size(), 2, "");
+            test_eq(m->cid(), m.get(), "");
+        TEST_END
+
+        TEST_START(find and remove)
+            int curCount = collectionRef->size();
+            // find
+            auto model = collectionRef->at(curCount-1);
+            test_eq(model.use_count(), 2, "");
+
+            // remove by reference
+            model = collectionRef->remove(model);
+            test_eq(model.use_count(), 1, ""); // local reference is last reference
+            test_eq(collectionRef->size(), curCount-1, "");
+        TEST_END
+
+        TEST_START(remove with invalid index)
+            int curCount = collectionRef->size();
+            auto model = collectionRef->removeByIndex(collectionRef->size()+1);
+            test_eq(model == nullptr, true, "");
+            test_eq(collectionRef->size(), curCount, "");
+        TEST_END
+
+        TEST_START(remove by index)
+            int curCount = collectionRef->size();
+            auto model = collectionRef->removeByIndex(collectionRef->size()-1);
+            test_eq(collectionRef->size(), curCount-1, "");
+            // test_eq(model->cid(), cid+20, "");
+            test_eq(model.use_count(), 1, ""); // last reference
+        TEST_END
+
+        TEST_START(destroy)
+            collectionRef->destroy();
+            test_eq(collectionRef->size(), 0, "");
+        TEST_END
+
+        TEST_START(initialize and each)
+            collectionRef->create();
+            test_eq(collectionRef->size(), 1, "");
+
+            std::vector<std::map<string, string>> data;
+            std::map<string, string> m;
+            m["number"] = "one";
+            data.push_back(m);
+            m["number"] = "two";
+            data.push_back(m);
+
+            collectionRef->initializeEvent.addListener([](ofxCMS::BaseCollection<ofxCMS::Model>& col){
+                // TODO
+                col.each([](shared_ptr<ofxCMS::Model> modelRef){
+                    modelRef->set("number", "#"+modelRef->get("number"));
+                });
+            }, this);
+
+            collectionRef->initialize(data);
+            test_eq(collectionRef->size(), 2, "");
+            test_eq(collectionRef->at(0)->get("number"), "#one", "");
+            test_eq(collectionRef->at(1)->get("number"), "#two", "");
+        TEST_END
+
+        TEST_START(previous n next)
+            test_eq(collectionRef->previous(collectionRef->at(1))->get("number"), "#one", "");
+            test_eq(collectionRef->previous(collectionRef->at(0), true)->get("number"), "#two", "");
+            test_eq(collectionRef->previous(collectionRef->at(0)) == nullptr, true, "");
+            test_eq(collectionRef->next(collectionRef->at(0))->get("number"), "#two", "");
+            test_eq(collectionRef->next(collectionRef->at(1), true)->get("number"), "#one", "");
+            test_eq(collectionRef->next(collectionRef->at(1)) == nullptr, true, "");
+        TEST_END
+
+        TEST_START(model copy)
+            auto refA = collectionRef->create();
+            auto refB = collectionRef->create();
+            refA->set("id", "1");
+            refA->set("_id", "_1");
+            refA->set("firstname", "john");
+            refA->set("lastname", "doe");
+            refB->set("id", "2");
+            refB->set("_id", "_2");
+            test_eq(refB->get("firstname"), "", "");
+            test_eq(refB->get("lastname"), "", "");
+            refB->copy(refA); // copy, but keep id and _id properties
+            test_eq(refB->get("id"), "2", "");
+            test_eq(refB->get("_id"), "_2", "");
+            test_eq(refB->get("firstname"), "john", "");
+            test_eq(refB->get("lastname"), "doe", "");
+            refA->set("firstname", "jane");
+            refB->copy(refA, true); // copy including id and _id properties
+            test_eq(refB->get("id"), "1", "");
+            test_eq(refB->get("_id"), "_1", "");
+            test_eq(refB->get("firstname"), "jane", "");
+            test_eq(refB->get("lastname"), "doe", "");
+        TEST_END
+
+        TEST_START(model each)
+            ofLogWarning() << "TODO";
+        TEST_END
+
+        TEST_START(findById)
+            CollectionClass col;
+            test_eq(col.size(), 0, "");
+            auto modelRef = col.findById("foo");
+            test_eq(modelRef == nullptr, true, "");
+            test_eq(col.size(), 0, "");
+            modelRef = col.findById("foo", true /* create if not found */);
+            test_eq(modelRef == nullptr, false, "");
+            test_eq(col.size(), 1, "");
+            test_eq(col.findById("foo") == modelRef, true, "");
+        TEST_END
+    }
 
     template<typename CollectionClass>
     shared_ptr<ofxCMS::Model> testCollection(){
         // create collection
         auto collectionRef = make_shared<CollectionClass>();
-        CidType cid;
+        ofxCMS::CidType cid;
 
         TEST_START(add)
             collectionRef->modelAddedEvent.addListener([](ofxCMS::Model& model){
@@ -177,7 +336,7 @@ class ofApp: public ofxUnitTestsApp{
     }
 
     void testCollectionAddons(){
-        CidType cid;
+        ofxCMS::CidType cid;
 
         TEST_START(limit)
             auto colRef = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
@@ -495,6 +654,8 @@ class ofApp: public ofxUnitTestsApp{
     }
 
     void run(){
+        testBaseCollection<ofxCMS::BaseCollection<ofxCMS::Model>>();
+
         auto modelRef = testCollection<ofxCMS::BaseCollection<ofxCMS::Model>>();
 
         TEST_START(change attribute after collection was deallocated)
@@ -523,12 +684,12 @@ class ofApp: public ofxUnitTestsApp{
         TEST_END
 
         TEST_START(CustomModel)
-            class CustomModel : public Model {
+            class CustomModel : public ofxCMS::Model {
                 public:
                     string foo(){ return get("bar"); }
             };
 
-            Collection<CustomModel> col;
+            ofxCMS::Collection<CustomModel> col;
             auto modelRef = col.create();
             test_eq(modelRef->foo(), "", "");
 
