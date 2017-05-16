@@ -1,6 +1,6 @@
 #include "ofxUnitTests.h"
 #include "ofxCMS.h"
-
+#include "ofxCMS/ObjectCollection.h"
 #define TEST_START(x) {ofLog()<<"CASE: "<<#x;
 #define TEST_END }
 
@@ -8,6 +8,90 @@
 CMSMAN_INIT
 
 class ofApp: public ofxUnitTestsApp{
+
+    template<typename InstanceType>
+    void testObjectCollection(){
+        auto collectionRef = make_shared<ofxCMS::ObjectCollection<InstanceType>>();
+
+        TEST_START(add)
+            int count=0;
+
+            collectionRef->addEvent.addListener([&count](InstanceType& model){
+                count++;
+            }, this);
+
+            test_eq(collectionRef->size(), 0, "");
+            test_eq(count, 0, "");
+
+            // create first model
+            auto instanceRef = collectionRef->create();
+            test_eq(instanceRef.use_count(), 2, "");
+
+            test_eq(collectionRef->size(), 1, "");
+            test_eq(count, 1, "");
+
+            collectionRef->addEvent.removeListeners(this);
+            instanceRef = collectionRef->create();
+
+            test_eq(collectionRef->size(), 2, "");
+            test_eq(count, 1, "");
+        TEST_END
+
+        TEST_START(add existing item)
+            int startCount = collectionRef->size();
+            auto m = make_shared<InstanceType>();
+            collectionRef->add(m);
+            test_eq(collectionRef->size(), startCount+1, "");
+        TEST_END
+
+        TEST_START(find and remove)
+            int curCount = collectionRef->size();
+
+            // find
+            auto instanceRef = collectionRef->at(curCount-1);
+            test_eq(instanceRef.use_count(), 2, "");
+
+            // remove by reference
+            collectionRef->remove(instanceRef);
+            test_eq(instanceRef.use_count(), 1, ""); // local reference is last reference
+            test_eq(collectionRef->size(), curCount-1, "");
+        TEST_END
+
+        TEST_START(remove with invalid index)
+            int curCount = collectionRef->size();
+            auto instanceRef = collectionRef->removeByIndex(collectionRef->size()+1);
+            test_eq(instanceRef == nullptr, true, "");
+            test_eq(collectionRef->size(), curCount, "");
+        TEST_END
+
+        TEST_START(remove by index)
+            int curCount = collectionRef->size();
+            auto instanceRef = collectionRef->at(curCount-1);
+            test_eq(instanceRef.use_count(), 2, "");
+            instanceRef = collectionRef->removeByIndex(curCount-1);
+            test_eq(collectionRef->size(), curCount-1, "");
+            test_eq(instanceRef.use_count(), 1, ""); // last reference
+        TEST_END
+
+        TEST_START(destroy)
+            collectionRef->destroy();
+            test_eq(collectionRef->size(), 0, "");
+        TEST_END
+
+        TEST_START(each)
+            int curCount = collectionRef->size();
+            collectionRef->create();
+            test_eq(collectionRef->size(), curCount+1, "");
+
+            int eachCount=0;
+
+            collectionRef->each([&eachCount](shared_ptr<InstanceType> modelRef){
+                eachCount++;
+            });
+
+            test_eq(eachCount, curCount+1, "");
+        TEST_END
+    }
 
     template<typename CollectionClass>
     void testBaseCollection(){
@@ -654,6 +738,11 @@ class ofApp: public ofxUnitTestsApp{
     }
 
     void run(){
+        {
+            class NothingClass {};
+            testObjectCollection<NothingClass>();
+        }
+
         testBaseCollection<ofxCMS::BaseCollection<ofxCMS::Model>>();
 
         auto modelRef = testCollection<ofxCMS::BaseCollection<ofxCMS::Model>>();
