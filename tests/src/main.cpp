@@ -73,6 +73,10 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(instanceRef.use_count(), 1, ""); // last reference
         TEST_END
 
+        TEST_START(remove by cid)
+            ofLogWarning() << "TODO";
+        TEST_END
+
         TEST_START(destroy)
             collectionRef->destroy();
             test_eq(collectionRef->size(), 0, "");
@@ -90,6 +94,26 @@ class ofApp: public ofxUnitTestsApp{
             });
 
             test_eq(eachCount, curCount+1, "");
+        TEST_END
+
+        TEST_START(add while iterating)
+            ofLogWarning() << "TODO";
+        TEST_END
+
+        TEST_START(remove while iterating)
+            ofLogWarning() << "TODO";
+        TEST_END
+
+        TEST_START(previous)
+            ofLogWarning() << "TODO";
+        TEST_END
+
+        TEST_START(next)
+            ofLogWarning() << "TODO";
+        TEST_END
+
+        TEST_START(random)
+            ofLogWarning() << "TODO";
         TEST_END
     }
 
