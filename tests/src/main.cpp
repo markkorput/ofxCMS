@@ -1,30 +1,18 @@
-// OF & addons
 #include "ofxUnitTests.h"
-// local
 #include "ofxCMS.h"
-#include "ofxLambdaEvent/Middleware.h"
-
 
 #define TEST_START(x) {ofLog()<<"CASE: "<<#x;
 #define TEST_END }
 
-// a bit ugly, but static variables need to be created,
-// and since Manager is a template class
-template<>
-shared_ptr<ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>>
-    ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>::_singleton_ref = nullptr;
+// initialize singleton instance
+CMSMAN_INIT
 
 using namespace ofxCMS;
-
-class CustomModel : public Model {
-public:
-    string foo(){ return get("bar"); }
-};
 
 class ofApp: public ofxUnitTestsApp{
 
     template<typename CollectionClass>
-    shared_ptr<ofxCMS::Model> runCollection(){
+    shared_ptr<ofxCMS::Model> testCollection(){
         // create collection
         auto collectionRef = make_shared<CollectionClass>();
         CidType cid;
@@ -78,20 +66,6 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(collectionRef->size(), 2, "");
             test_eq(m->cid(), m.get(), "");
         TEST_END
-
-        // TEST_START(add existing model with cid)
-        //     auto m = make_shared<ofxCMS::Model>();
-        //     m->setCid(cid+20);
-        //     collectionRef->add(m);
-        //     test_eq(collectionRef->size(), 3, "");
-        //     test_eq(m->cid(), cid+20, "");
-        // TEST_END
-
-        // TEST_START(check next cid)
-        //     shared_ptr<ofxCMS::Model> model = collectionRef->create();
-        //     test_eq(collectionRef->size(), 4, "");
-        //     test_eq(model->cid(), cid+21, "");
-        // TEST_END
 
         TEST_START(find and remove)
             int curCount = collectionRef->size();
@@ -202,92 +176,8 @@ class ofApp: public ofxUnitTestsApp{
         return collectionRef->create();
     }
 
-    void run(){
-        TEST_START(ofxLiquidEvent modified while invoked)
-            ofxLiquidEvent<ofxCMS::Model> event;
-            ofxCMS::Model model;
-
-            event.addListener([&](ofxCMS::Model& m){
-                model.set("before", ofToString(event.size()));
-                // modify event (remove listener) while being invoked
-                // (this callback gets called by the event itself)
-                event.removeListeners(this);
-                model.set("after", ofToString(event.size()));
-            }, this);
-
-            // one callback; the one we just registered
-            test_eq(event.size(), 1, "");
-
-            // invoke callback
-            event.notifyListeners(model);
-            test_eq(model.get("before"), "1", "");
-            // still 1, the remove won't take effect until
-            // the event is idle again
-            test_eq(model.get("after"), "1", "");
-            // the callback was removed immediately after the last listener finished running
-            test_eq(event.size(), 0, "");
-        TEST_END
-
-        TEST_START(middleware aborts)
-            Middleware<ofxCMS::Model> mid;
-
-            mid.addListener([](ofxCMS::Model& m) -> bool {
-                m.set("name", m.get("name") + " #1");
-                return true;
-            }, this);
-
-            mid.addListener([](ofxCMS::Model& m) -> bool {
-                m.set("name", m.get("name") + " #2");
-                return false; // <-- aborts!
-            }, this);
-
-            mid.addListener([](ofxCMS::Model& m) -> bool {
-                m.set("name", m.get("name") + " #3");
-                return true;
-            }, this);
-
-            ofxCMS::Model m;
-            test_eq(mid.notifyListeners(m), false, "");
-            test_eq(m.get("name"), " #1 #2", "");
-        TEST_END
-
-        TEST_START(middleware continues)
-            Middleware<ofxCMS::Model> mid;
-
-            mid.addListener([](ofxCMS::Model& m) -> bool {
-                m.set("name", m.get("name") + " #1");
-                return true;
-            }, this);
-
-            mid.addListener([](ofxCMS::Model& m) -> bool {
-                m.set("name", m.get("name") + " #2");
-                return true;
-            }, this);
-
-            mid.addListener([](ofxCMS::Model& m) -> bool {
-                m.set("name", m.get("name") + " #3");
-                return true;
-            }, this);
-
-            ofxCMS::Model m;
-            test_eq(mid.notifyListeners(m), true, "");
-            test_eq(m.get("name"), " #1 #2 #3", "");
-        TEST_END
-
-        auto modelRef = runCollection<ofxCMS::BaseCollection<ofxCMS::Model>>();
+    void testCollectionAddons(){
         CidType cid;
-
-        TEST_START(change attribute after collection was deallocated)
-            modelRef->set("foo101", "bar202");
-            test_eq(modelRef.use_count(), 1, "");
-        TEST_END
-
-        modelRef = runCollection<ofxCMS::Collection<ofxCMS::Model>>();
-
-        TEST_START(change attribute after collection was deallocated)
-            modelRef->set("foo303", "bar404");
-            test_eq(modelRef.use_count(), 1, "");
-        TEST_END
 
         TEST_START(limit)
             auto colRef = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
@@ -602,6 +492,24 @@ class ofApp: public ofxUnitTestsApp{
             colRef->loadJsonFromFile("properties2.json");
             test_eq(colRef->findById(".MyProgressBar")->get("size_y"), "30", "");
         TEST_END
+    }
+
+    void run(){
+        auto modelRef = testCollection<ofxCMS::BaseCollection<ofxCMS::Model>>();
+
+        TEST_START(change attribute after collection was deallocated)
+            modelRef->set("foo101", "bar202");
+            test_eq(modelRef.use_count(), 1, "");
+        TEST_END
+
+        modelRef = testCollection<ofxCMS::Collection<ofxCMS::Model>>();
+
+        TEST_START(change attribute after collection was deallocated)
+            modelRef->set("foo303", "bar404");
+            test_eq(modelRef.use_count(), 1, "");
+        TEST_END
+
+        testCollectionAddons();
 
         TEST_START(collection manager)
             // create singleton collections manager instance
@@ -615,6 +523,11 @@ class ofApp: public ofxUnitTestsApp{
         TEST_END
 
         TEST_START(CustomModel)
+            class CustomModel : public Model {
+                public:
+                    string foo(){ return get("bar"); }
+            };
+
             Collection<CustomModel> col;
             auto modelRef = col.create();
             test_eq(modelRef->foo(), "", "");
@@ -627,9 +540,6 @@ class ofApp: public ofxUnitTestsApp{
             modelRef->set("some", "change");
             test_eq(modelRef->get("lambda"), "called", "");
         TEST_END
-        // TEST_START(Polymorphism)
-        //     test_eq(CMSMAN->get<CustomModelType>("products")->at(0)->tellMeWhatTypeIAm(), "you are soo custom", "");
-        // TEST_END
     }
 };
 
