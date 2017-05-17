@@ -305,7 +305,7 @@ class ofApp: public ofxUnitTestsApp{
             sourceCol.create();
             sourceCol.create();
             test_eq(sourceCol.size(), 2, "");
-            test_eq(targetCol.size(), 2, "");
+            test_eq(targetCol.size(), 0, "");
 
             targetCol.template transform<InstanceType>(sourceCol, [](InstanceType& source) -> shared_ptr<TransformedClass>{
                 auto instanceRef = make_shared<TransformedClass>();
@@ -327,6 +327,15 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(targetCol.size(), 2, "");
             test_eq(targetCol.at(0)->pointerString, ofToString(sourceCol.at(0).get()), "");
             test_eq(targetCol.at(1)->pointerString, ofToString(sourceCol.at(1).get()), "");
+
+            targetCol.stopTransform(sourceCol);
+            sourceCol.removeByIndex(0);
+            test_eq(sourceCol.size(), 1, "");
+            test_eq(targetCol.size(), 2, "");
+            sourceCol.create();
+            sourceCol.create();
+            test_eq(sourceCol.size(), 3, "");
+            test_eq(targetCol.size(), 2, "");
         TEST_END
     }
 
