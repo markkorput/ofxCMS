@@ -122,6 +122,41 @@ class ofApp: public ofxUnitTestsApp{
     template<typename InstanceType>
     void testObjectCollection(){
 
+        TEST_START(limit)
+            auto colRef = make_shared<ofxCMS::ObjectCollection<InstanceType>>();
+            // create five instance
+            colRef->create();
+            colRef->create();
+            colRef->create();
+            colRef->create();
+            colRef->create();
+
+            string removed = "";
+
+            colRef->removeEvent.addListener([&removed](InstanceType& model){
+                removed += "#"+ofToString(&model);
+            }, this);
+
+            string expected = "#"+ofToString(colRef->at(4).get())+"#"+ofToString(colRef->at(3).get());
+            colRef->limit(3);
+            test_eq(colRef->size(), 3, ""); // two models removed
+            test_eq(removed, expected, ""); // remove callback invoked; last two models removed
+
+            InstanceType* cid = colRef->at(2).get();
+            colRef->create();
+            test_eq(colRef->size(), 3, ""); // nothing added (fifo is false by default)
+            test_eq(colRef->at(2).get(), cid, "");
+
+            colRef->setFifo(true);
+            auto newModelRef = colRef->create();
+            test_eq(colRef->size(), 3, ""); // nothing added (fifo is false by default)
+            test_eq(colRef->at(2).get(), newModelRef.get(), "");
+
+            colRef->removeEvent.removeListeners(this);
+
+            ofLogWarning() << "TODO: also feature one-time (non-active) limit";
+        TEST_END
+
         TEST_START(sync once)
             auto colRefA = make_shared<ofxCMS::ObjectCollection<InstanceType>>();
             auto colRefB = make_shared<ofxCMS::ObjectCollection<InstanceType>>();

@@ -1,19 +1,19 @@
 #pragma once
 
-#include "ModelCollection.h"
+#include "ObjectCollectionBase.h"
 
 #define OFXCMS_NO_LIMIT 0
 
 namespace ofxCMS {
 
-    template<class ModelClass>
+    template<class ObjectType>
     class CollectionLimit {
         public: // methods
 
             CollectionLimit() : collection(NULL), mLimit(OFXCMS_NO_LIMIT), bFifo(false){}
             ~CollectionLimit(){ destroy(); }
 
-            void setup(ModelCollection<ModelClass>* collection, unsigned int amount);
+            void setup(ObjectCollectionBase<ObjectType>* collection, unsigned int amount);
             void destroy();
 
             // bool limitReached(){ return mLimit != NO_LIMIT && collection->size() >= mLimit; }
@@ -27,35 +27,35 @@ namespace ofxCMS {
 
         private: // attributes
 
-            ModelCollection<ModelClass>* collection;
+            ObjectCollectionBase<ObjectType>* collection;
             unsigned int mLimit;
             bool bFifo; // first-in-first-out
     };
 }
 
-template<class ModelClass>
-void ofxCMS::CollectionLimit<ModelClass>::setup(ModelCollection<ModelClass>* collection, unsigned int amount){
+template<class ObjectType>
+void ofxCMS::CollectionLimit<ObjectType>::setup(ObjectCollectionBase<ObjectType>* collection, unsigned int amount){
     destroy();
     this->collection = collection;
     this->mLimit = amount;
 
-    this->collection->addEvent.addListener([this](ModelClass& model){
+    this->collection->addEvent.addListener([this](ObjectType& instance){
         this->enforce();
     }, this);
 
     this->enforce();
 }
 
-template<class ModelClass>
-void ofxCMS::CollectionLimit<ModelClass>::destroy(){
+template<class ObjectType>
+void ofxCMS::CollectionLimit<ObjectType>::destroy(){
     if(collection){
         collection->addEvent.removeListeners(this);
         collection = NULL;
     }
 }
 
-template<class ModelClass>
-void ofxCMS::CollectionLimit<ModelClass>::enforce(){
+template<class ObjectType>
+void ofxCMS::CollectionLimit<ObjectType>::enforce(){
     while(limitExceeded()){
         collection->removeByIndex(bFifo ? 0 : collection->size()-1);
     }

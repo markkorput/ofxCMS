@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ObjectCollectionBase.h"
+#include "CollectionLimit.h"
 #include "CollectionSync.h"
 
 namespace ofxCMS {
@@ -8,12 +9,22 @@ namespace ofxCMS {
     class ObjectCollection : public ObjectCollectionBase<ObjectType> {
 
     public:
+
+        void limit(unsigned int amount);
+        void setFifo(bool newFifo){ collectionLimit.setFifo(newFifo); }
+
         void sync(shared_ptr<ObjectCollectionBase<ObjectType>> other, bool active=true);
         void stopSync(shared_ptr<ObjectCollectionBase<ObjectType>> other);
 
     private:
+        CollectionLimit<ObjectType> collectionLimit;
         std::vector<shared_ptr<CollectionSync<ObjectType>>> collectionSyncs;
     };
+}
+
+template<class ObjectType>
+void ofxCMS::ObjectCollection<ObjectType>::limit(unsigned int amount){
+    collectionLimit.setup(this, amount);
 }
 
 template<class ObjectType>
