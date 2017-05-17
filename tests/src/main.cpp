@@ -1,6 +1,8 @@
 #include "ofxUnitTests.h"
 #include "ofxCMS.h"
 #include "ofxCMS/ObjectCollectionBase.h"
+#include "ofxCMS/ObjectCollection.h"
+
 #define TEST_START(x) {ofLog()<<"CASE: "<<#x;
 #define TEST_END }
 
@@ -114,6 +116,82 @@ class ofApp: public ofxUnitTestsApp{
 
         TEST_START(random)
             ofLogWarning() << "TODO";
+        TEST_END
+    }
+
+    template<typename InstanceType>
+    void testObjectCollection(){
+
+        TEST_START(sync once)
+            auto colRefA = make_shared<ofxCMS::ObjectCollection<InstanceType>>();
+            auto colRefB = make_shared<ofxCMS::ObjectCollection<InstanceType>>();
+
+            // initialize B with one model
+            colRefB->create();
+            test_eq(colRefB->size(), 1, "");
+            test_eq(colRefA->size(), 0, "");
+
+            // sync operation transfers model to A
+            colRefA->sync(colRefB, false /* sync once, don't monitor for changes */);
+            test_eq(colRefB->size(), 1, "");
+            test_eq(colRefA->size(), 1, "");
+            test_eq(colRefA->at(0).get(), colRefB->at(0).get(), "");
+
+            // sync is not active; A won't receive new models from B
+            colRefB->create();
+            test_eq(colRefB->size(), 2, "");
+            test_eq(colRefA->size(), 1, "");
+            test_eq(colRefA->at(0).get(), colRefB->at(0).get(), "");
+
+            // sync is not active; A won't drop models along with B
+            colRefB->removeByIndex(0);
+            test_eq(colRefB->size(), 1, "");
+            test_eq(colRefA->size(), 1, "");
+            test_eq(colRefA->at(0).get() == colRefB->at(0).get(), false, "");
+        TEST_END
+
+        TEST_START(sync active)
+            auto colRefA = make_shared<ofxCMS::ObjectCollection<InstanceType>>();
+            auto colRefB = make_shared<ofxCMS::ObjectCollection<InstanceType>>();
+
+            // initialize B with one model
+            colRefB->create();
+            test_eq(colRefB->size(), 1, "");
+            test_eq(colRefA->size(), 0, "");
+
+            // sync operation transfers model to A
+            colRefA->sync(colRefB);
+            test_eq(colRefB->size(), 1, "");
+            test_eq(colRefA->size(), 1, "");
+            test_eq(colRefA->at(0).get(), colRefB->at(0).get(), "");
+
+            // active sync; A receives new models from B
+            colRefB->create();
+            test_eq(colRefB->size(), 2, "");
+            test_eq(colRefA->size(), 2, "");
+            test_eq(colRefA->at(1).get(), colRefB->at(1).get(), "");
+
+            // second sync source
+            auto colRefC = make_shared<ofxCMS::ObjectCollection<InstanceType>>();
+            colRefC->create();
+            colRefC->create();
+            test_eq(colRefC->size(), 2, "");
+            colRefA->sync(colRefC);
+            test_eq(colRefA->size(), 4, "");
+
+            colRefC->create();
+            test_eq(colRefA->size(), 5, "");
+
+            // active sync; A drops models along with B
+            colRefB->removeByIndex(0);
+            colRefB->removeByIndex(0);
+            test_eq(colRefB->size(), 0, "");
+            test_eq(colRefA->size(), 3, "");
+
+            colRefC->removeByIndex(0);
+            colRefC->removeByIndex(0);
+            test_eq(colRefC->size(), 1, "");
+            test_eq(colRefA->size(), 1, "");
         TEST_END
     }
 
@@ -612,6 +690,9 @@ class ofApp: public ofxUnitTestsApp{
         class NothingClass {};
         testObjectCollectionBase<NothingClass>();
         testObjectCollectionBase<ofxCMS::Model>();
+
+        testObjectCollection<NothingClass>();
+        testObjectCollection<ofxCMS::Model>();
 
         testModelCollection<ofxCMS::ModelCollection<ofxCMS::Model>>();
         testModelCollection<ofxCMS::Collection<ofxCMS::Model>>();
