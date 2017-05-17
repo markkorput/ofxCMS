@@ -37,18 +37,12 @@ namespace ofxCMS {
 
     public:
 
-        Model() : mCid(OFXCMS_INVALID_CID){
-        }
-
         Model* set(const string &attr, const string &value, bool notify = true);
         Model* set(map<string, string> &attrs, bool notify=true);
         string get(const string &attr, string _default = "") const;
 
-//        string id() const { return get("id", get("_id", getId())); }
         string getId() const { return get("id", get("_id")); }
-        void setCid(CidType newCid){ mCid = newCid; }
-        CidType cid() const { return mCid; }
-        CidType getCid() const { return mCid; }
+        CidType cid() const { return (CidType)this; }
 
         const map<string, string> &attributes() const { return _attributes; }
 
@@ -77,9 +71,6 @@ namespace ofxCMS {
     private:
 
         map<string, string> _attributes;
-
-        // cid (client-id, for local/internal use)
-        CidType mCid;
 
     }; // class Model
 

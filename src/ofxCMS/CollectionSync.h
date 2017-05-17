@@ -1,29 +1,29 @@
 #pragma once
 
-#include "BaseCollection.h"
+#include "ObjectCollectionBase.h"
 
 namespace ofxCMS {
-    template<class ModelClass>
-    class CollectionSync : public BaseCollection<ModelClass> {
+    template<class ObjectType>
+    class CollectionSync : public ObjectCollectionBase<ObjectType> {
         public: // methods
 
             CollectionSync() : target(NULL), source(nullptr){}
             ~CollectionSync(){ destroy(); }
 
-            void setup(BaseCollection<ModelClass> *target, shared_ptr<BaseCollection<ModelClass>> source);
+            void setup(ObjectCollectionBase<ObjectType> *target, shared_ptr<ObjectCollectionBase<ObjectType>> source);
             void destroy();
 
-            shared_ptr<BaseCollection<ModelClass>> getSource() const { return source; }
+            shared_ptr<ObjectCollectionBase<ObjectType>> getSource() const { return source; }
 
         private: // attributes
 
-            BaseCollection<ModelClass> *target;
-            shared_ptr<BaseCollection<ModelClass>> source;
+            ObjectCollectionBase<ObjectType> *target;
+            shared_ptr<ObjectCollectionBase<ObjectType>> source;
     };
 }
 
-template<class ModelClass>
-void ofxCMS::CollectionSync<ModelClass>::setup(BaseCollection<ModelClass> *target, shared_ptr<BaseCollection<ModelClass>> source){
+template<class ObjectType>
+void ofxCMS::CollectionSync<ObjectType>::setup(ObjectCollectionBase<ObjectType> *target, shared_ptr<ObjectCollectionBase<ObjectType>> source){
     destroy();
 
     this->target = target;
@@ -34,32 +34,32 @@ void ofxCMS::CollectionSync<ModelClass>::setup(BaseCollection<ModelClass> *targe
         return;
     }
 
-    // add all models currently in source
-    source->each([this](shared_ptr<ModelClass> modelRef){
-        if(!this->target->has(modelRef)){
-            this->target->add(modelRef);
+    // add all instances currently in source
+    source->each([this](shared_ptr<ObjectType> instanceRef){
+        if(!this->target->has(instanceRef)){
+            this->target->add(instanceRef);
         }
     });
 
-    // actively monitor for new models added to source
-    source->modelAddedEvent.addListener([&](ModelClass& model){
-        if(!this->target->has(model.cid())){
-            this->target->add(this->source->findByCid(model.cid())); // need to convert ref var to shared_ptr
+    // actively monitor for new instances added to source
+    source->addEvent.addListener([&](ObjectType& instance){
+        if(!this->target->has(&instance)){
+            this->target->add(this->source->find(&instance)); // need to convert ref var to shared_ptr
         }
     }, this);
 
-    // actively montor for models removed from source
-    source->modelRemoveEvent.addListener([this](ModelClass& model){
-        if(this->target->has(model.cid()))
-            this->target->removeByCid(model.cid());
+    // actively montor for instances removed from source
+    source->removeEvent.addListener([this](ObjectType& instance){
+        if(this->target->has(&instance))
+            this->target->remove(&instance);
     }, this);
 }
 
-template<class ModelClass>
-void ofxCMS::CollectionSync<ModelClass>::destroy(){
+template<class ObjectType>
+void ofxCMS::CollectionSync<ObjectType>::destroy(){
     if(source){
-        source->modelAddedEvent.removeListeners(this);
-        source->modelRemoveEvent.removeListeners(this);
+        source->addEvent.removeListeners(this);
+        source->removeEvent.removeListeners(this);
         source = NULL;
     }
 }
