@@ -1,6 +1,6 @@
 #pragma once
 
-#include "BaseCollection.h"
+#include "ModelCollection.h"
 
 #define OFXCMS_NO_LIMIT 0
 
@@ -13,7 +13,7 @@ namespace ofxCMS {
             CollectionLimit() : collection(NULL), mLimit(OFXCMS_NO_LIMIT), bFifo(false){}
             ~CollectionLimit(){ destroy(); }
 
-            void setup(BaseCollection<ModelClass>* collection, unsigned int amount);
+            void setup(ModelCollection<ModelClass>* collection, unsigned int amount);
             void destroy();
 
             // bool limitReached(){ return mLimit != NO_LIMIT && collection->size() >= mLimit; }
@@ -27,14 +27,14 @@ namespace ofxCMS {
 
         private: // attributes
 
-            BaseCollection<ModelClass>* collection;
+            ModelCollection<ModelClass>* collection;
             unsigned int mLimit;
             bool bFifo; // first-in-first-out
     };
 }
 
 template<class ModelClass>
-void ofxCMS::CollectionLimit<ModelClass>::setup(BaseCollection<ModelClass>* collection, unsigned int amount){
+void ofxCMS::CollectionLimit<ModelClass>::setup(ModelCollection<ModelClass>* collection, unsigned int amount){
     destroy();
     this->collection = collection;
     this->mLimit = amount;

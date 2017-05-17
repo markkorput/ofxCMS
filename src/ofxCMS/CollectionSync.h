@@ -1,29 +1,29 @@
 #pragma once
 
-#include "BaseCollection.h"
+#include "ModelCollection.h"
 
 namespace ofxCMS {
     template<class ModelClass>
-    class CollectionSync : public BaseCollection<ModelClass> {
+    class CollectionSync : public ModelCollection<ModelClass> {
         public: // methods
 
             CollectionSync() : target(NULL), source(nullptr){}
             ~CollectionSync(){ destroy(); }
 
-            void setup(BaseCollection<ModelClass> *target, shared_ptr<BaseCollection<ModelClass>> source);
+            void setup(ModelCollection<ModelClass> *target, shared_ptr<ModelCollection<ModelClass>> source);
             void destroy();
 
-            shared_ptr<BaseCollection<ModelClass>> getSource() const { return source; }
+            shared_ptr<ModelCollection<ModelClass>> getSource() const { return source; }
 
         private: // attributes
 
-            BaseCollection<ModelClass> *target;
-            shared_ptr<BaseCollection<ModelClass>> source;
+            ModelCollection<ModelClass> *target;
+            shared_ptr<ModelCollection<ModelClass>> source;
     };
 }
 
 template<class ModelClass>
-void ofxCMS::CollectionSync<ModelClass>::setup(BaseCollection<ModelClass> *target, shared_ptr<BaseCollection<ModelClass>> source){
+void ofxCMS::CollectionSync<ModelClass>::setup(ModelCollection<ModelClass> *target, shared_ptr<ModelCollection<ModelClass>> source){
     destroy();
 
     this->target = target;

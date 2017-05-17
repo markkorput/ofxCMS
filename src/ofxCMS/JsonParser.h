@@ -1,6 +1,6 @@
 #pragma once
 
-#include "BaseCollection.h"
+#include "ModelCollection.h"
 #ifdef OFXCMS_JSON
     #include "ofxJSONElement.h"
 #endif
@@ -13,7 +13,7 @@ namespace ofxCMS{
         JsonParser() : collection(NULL), doCreate(true), doUpdate(true), doRemove(true){}
         // ~JsonParser(){ destroy(); }
 
-        void setup(BaseCollection<ModelClass> *collection, const string& filename = "");
+        void setup(ModelCollection<ModelClass> *collection, const string& filename = "");
         // void destroy();
 
         bool load();
@@ -31,14 +31,14 @@ namespace ofxCMS{
 #endif
 
     private:
-        BaseCollection<ModelClass> *collection;
+        ModelCollection<ModelClass> *collection;
         string filename;
         bool doCreate, doUpdate, doRemove;
     };
 }
 
 template<class ModelClass>
-void ofxCMS::JsonParser<ModelClass>::setup(BaseCollection<ModelClass> *collection, const string& filename){
+void ofxCMS::JsonParser<ModelClass>::setup(ModelCollection<ModelClass> *collection, const string& filename){
     this->collection = collection;
     this->filename = filename;
 }

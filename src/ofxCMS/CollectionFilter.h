@@ -1,11 +1,11 @@
 #pragma once
 
-#include "BaseCollection.h"
+#include "ModelCollection.h"
 #include "ofxLambdaEvent/function.h"
 
 namespace ofxCMS {
     template<class ModelClass>
-    class CollectionFilter : public BaseCollection<ModelClass> {
+    class CollectionFilter : public ModelCollection<ModelClass> {
 
         public: // types & constants
             typedef FUNCTION<bool(ModelClass&)> Functor;
@@ -13,18 +13,18 @@ namespace ofxCMS {
         public:
             CollectionFilter() : collection(NULL){};
             ~CollectionFilter(){ destroy(); }
-            void setup(BaseCollection<ModelClass>* collection, const string& attr, const string& value, bool accept=true);
-            void setup(BaseCollection<ModelClass>* collection, Functor func);
+            void setup(ModelCollection<ModelClass>* collection, const string& attr, const string& value, bool accept=true);
+            void setup(ModelCollection<ModelClass>* collection, Functor func);
             void destroy();
 
         private:
-            BaseCollection<ModelClass>* collection;
+            ModelCollection<ModelClass>* collection;
             Functor func;
     };
 }
 
 template<class ModelClass>
-void ofxCMS::CollectionFilter<ModelClass>::setup(BaseCollection<ModelClass>* collection, const string& attr, const string& value, bool accept){
+void ofxCMS::CollectionFilter<ModelClass>::setup(ModelCollection<ModelClass>* collection, const string& attr, const string& value, bool accept){
     // create function that checks a model
     auto func = [attr, value, accept](ModelClass& model) -> bool {
         bool match = model.get(attr) == value;
@@ -35,7 +35,7 @@ void ofxCMS::CollectionFilter<ModelClass>::setup(BaseCollection<ModelClass>* col
 }
 
 template<class ModelClass>
-void ofxCMS::CollectionFilter<ModelClass>::setup(BaseCollection<ModelClass>* collection, Functor func){
+void ofxCMS::CollectionFilter<ModelClass>::setup(ModelCollection<ModelClass>* collection, Functor func){
     destroy();
     this->collection = collection;
     this->func = func;

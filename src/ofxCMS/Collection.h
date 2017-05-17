@@ -1,6 +1,6 @@
 #pragma once
 
-#include "BaseCollection.h"
+#include "ModelCollection.h"
 #include "CollectionLimit.h"
 #include "CollectionSync.h"
 #include "CollectionFilter.h"
@@ -8,7 +8,7 @@
 
 namespace ofxCMS {
     template<class ModelClass>
-    class Collection : public BaseCollection<ModelClass> {
+    class Collection : public ModelCollection<ModelClass> {
 
     public: // types & constants
         typedef FUNCTION<bool(ModelClass&)> FilterFunctor;
