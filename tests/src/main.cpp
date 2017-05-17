@@ -128,7 +128,7 @@ class ofApp: public ofxUnitTestsApp{
         ofxCMS::CidType cid;
 
         TEST_START(add)
-            collectionRef->modelAddedEvent.addListener([](ofxCMS::Model& model){
+            collectionRef->addEvent.addListener([](ofxCMS::Model& model){
                 model.set("foo", "barr52");
             }, this);
 
@@ -138,7 +138,7 @@ class ofApp: public ofxUnitTestsApp{
 
             test_eq(modelRef.use_count(), 2, "");
 
-            collectionRef->modelAddedEvent.removeListeners(this);
+            collectionRef->addEvent.removeListeners(this);
 
             test_eq(collectionRef->size(), 1, "");
             test_eq(modelRef->get("foo"), "barr52", "");
@@ -290,7 +290,7 @@ class ofApp: public ofxUnitTestsApp{
         ofxCMS::CidType cid;
 
         TEST_START(add)
-            collectionRef->modelAddedEvent.addListener([](ofxCMS::Model& model){
+            collectionRef->addEvent.addListener([](ofxCMS::Model& model){
                 model.set("foo", "barr52");
             }, this);
 
@@ -300,7 +300,7 @@ class ofApp: public ofxUnitTestsApp{
 
             test_eq(modelRef.use_count(), 2, "");
 
-            collectionRef->modelAddedEvent.removeListeners(this);
+            collectionRef->addEvent.removeListeners(this);
 
             test_eq(collectionRef->size(), 1, "");
             test_eq(modelRef->get("foo"), "barr52", "");
@@ -462,7 +462,7 @@ class ofApp: public ofxUnitTestsApp{
 
             string removed = "";
 
-            colRef->modelRemoveEvent.addListener([&removed](ofxCMS::Model& model){
+            colRef->removeEvent.addListener([&removed](ofxCMS::Model& model){
                 removed += "#"+ofToString(model.cid());
             }, this);
 
@@ -481,7 +481,7 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(colRef->size(), 3, ""); // nothing added (fifo is false by default)
             test_eq(colRef->at(2)->cid(), newModelRef->cid(), "");
 
-            colRef->modelRemoveEvent.removeListeners(this);
+            colRef->removeEvent.removeListeners(this);
 
             ofLogWarning() << "TODO: also feature one-time (non-active) limit";
         TEST_END

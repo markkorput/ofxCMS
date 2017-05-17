@@ -45,21 +45,15 @@ namespace ofxCMS {
 
         public: // events
 
-            LambdaEvent<ModelClass> modelAddedEvent;
             LambdaEvent<BaseCollection<ModelClass>> initializeEvent;
             LambdaEvent<ModelClass> modelChangeEvent;
             LambdaEvent<AttrChangeArgs> attributeChangeEvent;
-            LambdaEvent<ModelClass> modelRemoveEvent;
-
     };
 }
 
 
 template <class ModelClass>
 ofxCMS::BaseCollection<ModelClass>::BaseCollection(){
-    this->modelAddedEvent.forward(this->addEvent);
-    this->modelRemoveEvent.forward(this->removeEvent);
-
     // for every model that gets added to our collection, we register change listeners
     // that trigger our changeEvent and attributeChangeEvent
     this->addEvent.addListener([this](ModelClass& newModel){

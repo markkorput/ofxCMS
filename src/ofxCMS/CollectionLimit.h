@@ -39,7 +39,7 @@ void ofxCMS::CollectionLimit<ModelClass>::setup(BaseCollection<ModelClass>* coll
     this->collection = collection;
     this->mLimit = amount;
 
-    this->collection->modelAddedEvent.addListener([this](ModelClass& model){
+    this->collection->addEvent.addListener([this](ModelClass& model){
         this->enforce();
     }, this);
 
@@ -49,7 +49,7 @@ void ofxCMS::CollectionLimit<ModelClass>::setup(BaseCollection<ModelClass>* coll
 template<class ModelClass>
 void ofxCMS::CollectionLimit<ModelClass>::destroy(){
     if(collection){
-        collection->modelAddedEvent.removeListeners(this);
+        collection->addEvent.removeListeners(this);
         collection = NULL;
     }
 }

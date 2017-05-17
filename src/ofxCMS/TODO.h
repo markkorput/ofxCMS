@@ -328,7 +328,7 @@ template <class ModelClass>
 void ofxCMS::Collection<ModelClass>::clone(Collection<ModelClass> &source){
     clear(); // triggers modelRemovedEvents for each model
     for(int i=0; i<source.models().size(); i++){
-        add(source.at(i)); // trigges modelAddedEvents
+        add(source.at(i)); // triggers addEvents
     }
 }
 

@@ -42,14 +42,14 @@ void ofxCMS::CollectionSync<ModelClass>::setup(BaseCollection<ModelClass> *targe
     });
 
     // actively monitor for new models added to source
-    source->modelAddedEvent.addListener([&](ModelClass& model){
+    source->addEvent.addListener([&](ModelClass& model){
         if(!this->target->has(model.cid())){
             this->target->add(this->source->findByCid(model.cid())); // need to convert ref var to shared_ptr
         }
     }, this);
 
     // actively montor for models removed from source
-    source->modelRemoveEvent.addListener([this](ModelClass& model){
+    source->removeEvent.addListener([this](ModelClass& model){
         if(this->target->has(model.cid()))
             this->target->removeByCid(model.cid());
     }, this);
@@ -58,8 +58,8 @@ void ofxCMS::CollectionSync<ModelClass>::setup(BaseCollection<ModelClass> *targe
 template<class ModelClass>
 void ofxCMS::CollectionSync<ModelClass>::destroy(){
     if(source){
-        source->modelAddedEvent.removeListeners(this);
-        source->modelRemoveEvent.removeListeners(this);
+        source->addEvent.removeListeners(this);
+        source->removeEvent.removeListeners(this);
         source = NULL;
     }
 }
