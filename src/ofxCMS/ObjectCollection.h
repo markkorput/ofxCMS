@@ -3,10 +3,14 @@
 #include "ObjectCollectionBase.h"
 #include "CollectionLimit.h"
 #include "CollectionSync.h"
+#include "ObjectFilter.h"
 
 namespace ofxCMS {
     template<class ObjectType>
     class ObjectCollection : public ObjectCollectionBase<ObjectType> {
+
+    public: // types & constants
+        typedef FUNCTION<bool(ObjectType&)> FilterFunctor;
 
     public:
 
@@ -16,9 +20,14 @@ namespace ofxCMS {
         void sync(shared_ptr<ObjectCollectionBase<ObjectType>> other, bool active=true);
         void stopSync(shared_ptr<ObjectCollectionBase<ObjectType>> other);
 
+        void filter(FilterFunctor func, bool active=true);
+        void reject(FilterFunctor func, bool active=true);
+
+
     private:
         CollectionLimit<ObjectType> collectionLimit;
         std::vector<shared_ptr<CollectionSync<ObjectType>>> collectionSyncs;
+        std::vector<shared_ptr<ObjectFilter<ObjectType>>> collectionFilters;
     };
 }
 
@@ -47,4 +56,24 @@ void ofxCMS::ObjectCollection<ObjectType>::stopSync(shared_ptr<ObjectCollectionB
     }
 
     ofLogWarning() << "Could not source to stop syncing from";
+}
+
+template<class InstanceType>
+void ofxCMS::ObjectCollection<InstanceType>::filter(FilterFunctor func, bool active){
+    auto filter = make_shared<ObjectFilter<InstanceType>>();
+    filter->setup(this, func);
+
+    // if active; save filter so it doesn't auto-destruct (since it's a shared_ptr)
+    if(active)
+        collectionFilters.push_back(filter);
+}
+
+template<class InstanceType>
+void ofxCMS::ObjectCollection<InstanceType>::reject(FilterFunctor func, bool active){
+    auto filter = make_shared<ObjectFilter<InstanceType>>();
+    filter->setup(this, func, false /* reject instead of accept */);
+
+    // if active; save filter so it doesn't auto-destruct (since it's a shared_ptr)
+    if(active)
+        collectionFilters.push_back(filter);
 }

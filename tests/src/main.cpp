@@ -228,6 +228,71 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(colRefC->size(), 1, "");
             test_eq(colRefA->size(), 1, "");
         TEST_END
+
+        TEST_START(filter actively using custom lambda)
+            ofxCMS::ObjectCollection<InstanceType> col;
+            col.create();
+            col.create();
+            col.create();
+            test_eq(col.size(), 3, "");
+
+            int filterCounter=0;
+
+            col.filter([&filterCounter](InstanceType& instance) -> bool {
+                // accept every other instance
+                bool accept = ((filterCounter & 1) == 0);
+                filterCounter++;
+                return accept;
+            });
+
+            test_eq(filterCounter, 3, "");
+            test_eq(col.size(), 2, "");
+
+            col.create();
+            test_eq(col.size(), 2, "");
+            col.create();
+            test_eq(col.size(), 3, "");
+            col.create();
+            test_eq(col.size(), 3, "");
+            col.create();
+            test_eq(col.size(), 4, "");
+            test_eq(filterCounter, 7, "");
+        TEST_END
+
+        TEST_START(reject actively using custom lambda)
+            ofxCMS::ObjectCollection<InstanceType> col;
+            col.create();
+            col.create();
+            col.create();
+            test_eq(col.size(), 3, "");
+
+            int filterCounter=0;
+
+            col.reject([&filterCounter](InstanceType& instance) -> bool {
+                // accept every other instance
+                bool accept = ((filterCounter & 1) == 0);
+                filterCounter++;
+                return accept;
+            });
+
+            test_eq(filterCounter, 3, "");
+            test_eq(col.size(), 1, "");
+
+            col.create();
+            test_eq(col.size(), 2, "");
+            col.create();
+            test_eq(col.size(), 2, "");
+            col.create();
+            test_eq(col.size(), 3, "");
+            col.create();
+            test_eq(col.size(), 3, "");
+            test_eq(filterCounter, 7, "");
+        TEST_END
+
+        TEST_START(combine filter sync and limit)
+            ofLogWarning() << "TODO";
+        TEST_END
+
     }
 
     template<typename CollectionClass>
