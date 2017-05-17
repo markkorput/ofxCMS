@@ -50,20 +50,25 @@ void ofxCMS::ObjectTransformer<SourceType, TargetType>::setup(
 
     // transform all instances currently in source
     this->sourceCollection->each([this](shared_ptr<SourceType> sourceRef){
+        // generate tranformed instance
         auto targetRef = this->func(*sourceRef.get());
-        this->transformLinks[sourceRef.get()] = targetRef.get();
         this->targetCollection->add(targetRef);
+        // record a "link-record" between the source and target instances
+        this->transformLinks[sourceRef.get()] = targetRef.get();
     });
 
     // actively transform new instances appearing in source
     this->sourceCollection->addEvent.addListener([&](SourceType& sourceInstance){
+        // generate tranformed instance
         auto targetRef = this->func(sourceInstance);
-        this->transformLinks[&sourceInstance] = targetRef.get();
         this->targetCollection->add(targetRef);
+        // record a "link-record" between the source and target instances
+        this->transformLinks[&sourceInstance] = targetRef.get();
     }, this);
 
     // actively remove generated instances when instances are removed from source
     this->sourceCollection->removeEvent.addListener([this](SourceType& sourceInstance){
+        // find "link-record" for removed source instance
         auto it = this->transformLinks.find(&sourceInstance);
 
         if(it == this->transformLinks.end()){
@@ -71,7 +76,7 @@ void ofxCMS::ObjectTransformer<SourceType, TargetType>::setup(
             return;
         }
 
-        // remove the linked transformed item
+        // remove the generated target instance
         this->targetCollection->remove(it->second);
 
         // remove the link
