@@ -10,7 +10,7 @@ namespace ofxCMS {
 
         public: // types & constants
 
-            typedef ModelClass* CidType;
+            typedef void* CidType;
 
             // used in attributeChangeEvent notifications
             struct AttrChangeArgs {

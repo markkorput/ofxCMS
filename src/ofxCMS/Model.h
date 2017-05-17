@@ -16,14 +16,11 @@
 namespace ofxCMS {
     // a key-value pair model that fires notifications when attributes change,
     // kinda based on the Backbone.js Models
-    class Model;
-
-    typedef Model* CidType;
-
-
     class Model{
 
     public:
+
+        typedef void* CidType;
 
         typedef FUNCTION<void(const string&, const string&)> AttrIterateFunc;
 

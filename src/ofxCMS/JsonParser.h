@@ -104,7 +104,7 @@ bool ofxCMS::JsonParser<ModelClass>::parse(const string &jsonText){
             // if remove_model is still true, this means that no records with a matching id were found,
             // meaning this in-memory record was removed from the collection and we should drop it as well
             if(remove_this_model)
-                collection->removeByCid(modelRef->cid());
+                collection->remove(modelRef.get());
         });
     }
 

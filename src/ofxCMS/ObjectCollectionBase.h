@@ -59,6 +59,7 @@ namespace ofxCMS {
             // CRUD - Delete
             shared_ptr<ObjectType> remove(shared_ptr<ObjectType> instanceRef, bool notify=true);
             shared_ptr<ObjectType> remove(ObjectType* cid, bool notify=true);
+            shared_ptr<ObjectType> remove(void* cid, bool notify=true){ return this->remove((ObjectType*)cid, notify); }
             shared_ptr<ObjectType> removeByIndex(unsigned int index, bool notify=true);
 
         protected: // methods
