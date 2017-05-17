@@ -13,7 +13,7 @@ class ofApp: public ofxUnitTestsApp{
     void testObjectCollection(){
         auto collectionRef = make_shared<ofxCMS::ObjectCollection<InstanceType>>();
 
-        TEST_START(add)
+        TEST_START(create)
             int count=0;
 
             collectionRef->addEvent.addListener([&count](InstanceType& model){
@@ -37,7 +37,7 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(count, 1, "");
         TEST_END
 
-        TEST_START(add existing item)
+        TEST_START(add)
             int startCount = collectionRef->size();
             auto m = make_shared<InstanceType>();
             collectionRef->add(m);
@@ -73,7 +73,7 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(instanceRef.use_count(), 1, ""); // last reference
         TEST_END
 
-        TEST_START(remove by cid)
+        TEST_START(remove by pointer)
             ofLogWarning() << "TODO";
         TEST_END
 
@@ -115,6 +115,11 @@ class ofApp: public ofxUnitTestsApp{
         TEST_START(random)
             ofLogWarning() << "TODO";
         TEST_END
+    }
+
+    template<typename InstanceType>
+    void testModelCollection(){
+
     }
 
     template<typename CollectionClass>
@@ -765,6 +770,7 @@ class ofApp: public ofxUnitTestsApp{
         {
             class NothingClass {};
             testObjectCollection<NothingClass>();
+            testObjectCollection<ofxCMS::Model>();
         }
 
         testBaseCollection<ofxCMS::BaseCollection<ofxCMS::Model>>();

@@ -58,7 +58,10 @@ namespace ofxCMS {
 
             // CRUD - Delete
             shared_ptr<ObjectType> remove(shared_ptr<ObjectType> instanceRef, bool notify=true);
-            shared_ptr<ObjectType> removeByCid(ObjectType* cid, bool notify=true);
+            shared_ptr<ObjectType> remove(ObjectType* cid, bool notify=true);
+            shared_ptr<ObjectType> removeByCid(ObjectType* cid, bool notify=true){
+                ofLogWarning() << "removeByCid is deprecated";
+                remove(cid, notify); }
             shared_ptr<ObjectType> removeByIndex(unsigned int index, bool notify=true);
 
         protected: // methods
@@ -213,11 +216,11 @@ shared_ptr<ObjectType>  ofxCMS::ObjectCollection<ObjectType>::remove(shared_ptr<
     }
 
     // find index and remove by index
-    return removeByCid(instanceRef.get());
+    return remove(instanceRef.get());
 }
 
 template <class ObjectType>
-shared_ptr<ObjectType> ofxCMS::ObjectCollection<ObjectType>::removeByCid(ObjectType* cid, bool notify){
+shared_ptr<ObjectType> ofxCMS::ObjectCollection<ObjectType>::remove(ObjectType* cid, bool notify){
     // vector being iterated over? schedule removal operation for when iteration is done
     if(isLocked()){
         operationsQueue.push_back(make_shared<Modification>(cid, notify));
@@ -256,7 +259,7 @@ shared_ptr<ObjectType> ofxCMS::ObjectCollection<ObjectType>::removeByIndex(unsig
     }
 
     // invoke main remove routine
-    return removeByCid(instanceRef.get(), notify);
+    return remove(instanceRef.get(), notify);
 }
 
 template <class ObjectType>
@@ -275,7 +278,7 @@ void ofxCMS::ObjectCollection<ObjectType>::lock(LockFunctor func){
         if(modification->addRef){
             add(modification->addRef, modification->notify);
         } else {
-            removeByCid(modification->removeCid, modification->notify);
+            remove(modification->removeCid, modification->notify);
         }
     }
 
