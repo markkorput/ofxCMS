@@ -1,12 +1,12 @@
 #pragma once
 
 #include "ofxLambdaEvent/LambdaEvent.h"
-#include "ObjectCollection.h"
+#include "ObjectCollectionBase.h"
 
 namespace ofxCMS {
         //! ModelCollection is a "core-essential" base class for the main Collection class.
         template<class ModelClass>
-        class ModelCollection : public ObjectCollection<ModelClass> {
+        class ModelCollection : public ObjectCollectionBase<ModelClass> {
 
         public: // types & constants
 

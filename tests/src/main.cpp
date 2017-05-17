@@ -1,6 +1,6 @@
 #include "ofxUnitTests.h"
 #include "ofxCMS.h"
-#include "ofxCMS/ObjectCollection.h"
+#include "ofxCMS/ObjectCollectionBase.h"
 #define TEST_START(x) {ofLog()<<"CASE: "<<#x;
 #define TEST_END }
 
@@ -10,8 +10,8 @@ CMSMAN_INIT
 class ofApp: public ofxUnitTestsApp{
 
     template<typename InstanceType>
-    void testObjectCollection(){
-        auto collectionRef = make_shared<ofxCMS::ObjectCollection<InstanceType>>();
+    void testObjectCollectionBase(){
+        auto collectionRef = make_shared<ofxCMS::ObjectCollectionBase<InstanceType>>();
 
         TEST_START(create)
             int count=0;
@@ -610,8 +610,8 @@ class ofApp: public ofxUnitTestsApp{
 
     void run(){
         class NothingClass {};
-        testObjectCollection<NothingClass>();
-        testObjectCollection<ofxCMS::Model>();
+        testObjectCollectionBase<NothingClass>();
+        testObjectCollectionBase<ofxCMS::Model>();
 
         testModelCollection<ofxCMS::ModelCollection<ofxCMS::Model>>();
         testModelCollection<ofxCMS::Collection<ofxCMS::Model>>();
