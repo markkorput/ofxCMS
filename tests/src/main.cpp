@@ -293,6 +293,41 @@ class ofApp: public ofxUnitTestsApp{
             ofLogWarning() << "TODO";
         TEST_END
 
+        TEST_START(transform)
+            class TransformedClass {
+            public:
+                string pointerString;
+            };
+
+            ofxCMS::ObjectCollection<TransformedClass> targetCol;
+            ofxCMS::ObjectCollection<InstanceType> sourceCol;
+
+            sourceCol.create();
+            sourceCol.create();
+            test_eq(sourceCol.size(), 2, "");
+            test_eq(targetCol.size(), 2, "");
+
+            targetCol.template transform<InstanceType>(sourceCol, [](InstanceType& source) -> shared_ptr<TransformedClass>{
+                auto instanceRef = make_shared<TransformedClass>();
+                instanceRef->pointerString = ofToString(&source);
+                return instanceRef;
+            });
+
+            test_eq(targetCol.size(), 2, "");
+            test_eq(targetCol.at(0)->pointerString, ofToString(sourceCol.at(0).get()), "");
+            test_eq(targetCol.at(1)->pointerString, ofToString(sourceCol.at(1).get()), "");
+
+            sourceCol.create();
+            test_eq(targetCol.size(), 3, "");
+            test_eq(targetCol.at(0)->pointerString, ofToString(sourceCol.at(0).get()), "");
+            test_eq(targetCol.at(1)->pointerString, ofToString(sourceCol.at(1).get()), "");
+            test_eq(targetCol.at(2)->pointerString, ofToString(sourceCol.at(2).get()), "");
+
+            sourceCol.removeByIndex(1);
+            test_eq(targetCol.size(), 2, "");
+            test_eq(targetCol.at(0)->pointerString, ofToString(sourceCol.at(0).get()), "");
+            test_eq(targetCol.at(1)->pointerString, ofToString(sourceCol.at(1).get()), "");
+        TEST_END
     }
 
     template<typename CollectionClass>

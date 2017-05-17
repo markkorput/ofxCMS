@@ -23,6 +23,11 @@ namespace ofxCMS {
         void filter(FilterFunctor func, bool active=true);
         void reject(FilterFunctor func, bool active=true);
 
+        template<class SourceType>
+        void transform(ObjectCollectionBase<SourceType> &sourceCollection, FUNCTION<shared_ptr<ObjectType>(SourceType&)> func/*, bool active=true*/){}
+        // 
+        // template<class SourceType>
+        // void _transform(FUNCTION<void(SourceType&)> func){}
 
     private:
         CollectionLimit<ObjectType> collectionLimit;
