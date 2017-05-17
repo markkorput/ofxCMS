@@ -45,7 +45,7 @@ namespace ofxCMS {
             shared_ptr<ObjectType> find(ObjectType* cid);
 
             unsigned int size(){ return instanceRefs.size(); }
-            bool has(shared_ptr<ObjectType> instanceRef){ return indexOf(instanceRef->get()) != OFXCMS_INVALID_INDEX; }
+            bool has(shared_ptr<ObjectType> instanceRef){ return indexOf(instanceRef.get()) != OFXCMS_INVALID_INDEX; }
             bool has(ObjectType* cid){ return indexOf(cid) != OFXCMS_INVALID_INDEX; }
 
             int randomIndex(){ return size() == 0 ? OFXCMS_INVALID_INDEX : floor(ofRandom(size())); }
@@ -59,9 +59,6 @@ namespace ofxCMS {
             // CRUD - Delete
             shared_ptr<ObjectType> remove(shared_ptr<ObjectType> instanceRef, bool notify=true);
             shared_ptr<ObjectType> remove(ObjectType* cid, bool notify=true);
-            shared_ptr<ObjectType> removeByCid(ObjectType* cid, bool notify=true){
-                ofLogWarning() << "removeByCid is deprecated";
-                remove(cid, notify); }
             shared_ptr<ObjectType> removeByIndex(unsigned int index, bool notify=true);
 
         protected: // methods
@@ -237,12 +234,13 @@ shared_ptr<ObjectType> ofxCMS::ObjectCollection<ObjectType>::remove(ObjectType* 
     // find
     auto instanceRef = at(idx);
 
+    // notify (BEFORE removing from vector, because the shared_ptr might need to be looked up)
+    if(notify)
+        removeEvent.notifyListeners(*instanceRef.get());
+
     // remove
     instanceRefs.erase(instanceRefs.begin() + idx);
 
-    // notify
-    if(notify)
-        removeEvent.notifyListeners(*instanceRef.get());
 
     // return removed instance
     return instanceRef;
