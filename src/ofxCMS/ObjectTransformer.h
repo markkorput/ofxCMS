@@ -18,7 +18,7 @@ namespace ofxCMS {
         public: // methods
 
             ObjectTransformer() : sourceCollection(NULL), targetCollection(NULL){}
-            ~ObjectTransformer(){ ofLog() << "~ObjectTransformer"; destroy(); }
+            ~ObjectTransformer(){ destroy(); }
 
             void setup(
                 ObjectCollectionBase<SourceType> &source,
