@@ -15,6 +15,7 @@ namespace ofxCMS {
 
         public: // types & constants
 
+            typedef void* CidType;
             typedef FUNCTION<void(void)> LockFunctor;
             typedef FUNCTION<void(shared_ptr<ObjectType>)> IterateRefFunc;
 
@@ -43,10 +44,14 @@ namespace ofxCMS {
             // const vector<shared_ptr<ObjectType>> &instances(){ return instanceRefs; }
             shared_ptr<ObjectType> at(unsigned int idx);
             shared_ptr<ObjectType> find(ObjectType* cid);
+            //! Convenience method that convert the void* CidType to a ObjectType* value
+            shared_ptr<ObjectType> find(CidType cid){ return this->find((ObjectType*)cid); }
 
             unsigned int size(){ return instanceRefs.size(); }
             bool has(shared_ptr<ObjectType> instanceRef){ return indexOf(instanceRef.get()) != OFXCMS_INVALID_INDEX; }
             bool has(ObjectType* cid){ return indexOf(cid) != OFXCMS_INVALID_INDEX; }
+            //! Convenience method that convert the void* CidType to a ObjectType* value
+            bool has(CidType cid){ return has((ObjectType*)cid); }
 
             int randomIndex(){ return size() == 0 ? OFXCMS_INVALID_INDEX : floor(ofRandom(size())); }
             shared_ptr<ObjectType> random(){ return at(randomIndex()); }
@@ -59,6 +64,8 @@ namespace ofxCMS {
             // CRUD - Delete
             shared_ptr<ObjectType> remove(shared_ptr<ObjectType> instanceRef, bool notify=true);
             shared_ptr<ObjectType> remove(ObjectType* cid, bool notify=true);
+            //! Convenience method that convert the void* CidType to a ObjectType* value
+            shared_ptr<ObjectType> remove(CidType cid, bool notify=true){ return this->remove((ObjectType*)cid); }
             shared_ptr<ObjectType> removeByIndex(unsigned int index, bool notify=true);
 
         protected: // methods

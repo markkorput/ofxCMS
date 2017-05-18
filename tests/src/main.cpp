@@ -9,6 +9,8 @@
 // initialize singleton instance
 CMSMAN_INIT
 
+typedef void* CidType;
+
 class ofApp: public ofxUnitTestsApp{
 
     template<typename InstanceType>
@@ -347,7 +349,7 @@ class ofApp: public ofxUnitTestsApp{
 
         {
             auto collectionRef = make_shared<CollectionClass>();
-            ofxCMS::CidType cid;
+            CidType cid;
 
             TEST_START(add)
                 collectionRef->addEvent.addListener([](ofxCMS::Model& model){
@@ -513,7 +515,7 @@ class ofApp: public ofxUnitTestsApp{
     }
 
     void testCollectionAddons(){
-        ofxCMS::CidType cid;
+        CidType cid;
 
         TEST_START(limit)
             auto colRef = make_shared<ofxCMS::Collection<ofxCMS::Model>>();
