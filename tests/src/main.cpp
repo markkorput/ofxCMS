@@ -60,6 +60,42 @@ class ofApp: public ofxUnitTestsApp{
         TEST_END
     }
 
+    template<typename ModelType>
+    void testExtendedModel(){
+        TEST_START(actively transform specific attribute)
+            ModelType model;
+            model.set("age", "10");
+
+            float result;
+
+            auto transformerRef = model.transform("age", [&result](const string& value){
+                result = ofToFloat(value) * 100.0f;
+            });
+
+            // .transform already processed the existing value
+            test_eq(result, 1000.0f, "");
+            // change value
+            model.set("age", "25");
+            // .transform registers change listener and automatically processes updated value
+            test_eq(result, 2500.0f, "");
+
+            // stop transformer
+            transformerRef->stop();
+            // change value
+            model.set("age", "1");
+            // didn't transform
+            test_eq(result, 2500.0f, "");
+
+            // start transformer again
+            transformerRef->start();
+            // change value
+            model.set("age", "2");
+            // DID transform
+            test_eq(result, 200.0f, "");
+        TEST_END
+
+    }
+
     template<typename InstanceType>
     void testObjectCollectionBase(){
         auto collectionRef = make_shared<ofxCMS::ObjectCollectionBase<InstanceType>>();
@@ -881,6 +917,8 @@ class ofApp: public ofxUnitTestsApp{
 
     void run(){
         testModel<ofxCMS::Model>();
+        testModel<ofxCMS::ExtendedModel>();
+        testExtendedModel<ofxCMS::ExtendedModel>();
 
         class NothingClass {};
         testObjectCollectionBase<NothingClass>();
