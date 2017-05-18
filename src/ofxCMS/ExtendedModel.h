@@ -90,32 +90,45 @@ namespace ofxCMS {
 
         //! registers an attribute transformer
         shared_ptr<ValueTransformer> transform(const string& attr, AttributeTransformFunctor func, bool active=true){
-            auto transformerRef = make_shared<ValueTransformer>();
-            transformerRef->setup(*this, attr, func);
-
-            // only save to our internal vector if active; otherwise let the shared_ptr expire
-            if(active)
-                valueTransformerRefs.push_back(transformerRef);
-
-            // give the transformer to the caller to they could use the start/stop functionality if they want
-            return transformerRef;
+            return transform(attr, func, NULL, active);
         }
 
-        //! convenience method to register the same transformer on various attributes
+        //! register the same transformer on various attributes
         shared_ptr<ValueTransformer> transform(const std::vector<string> &attrs, AttributeTransformFunctor func, bool active=true){
+            return transform(attrs, func, NULL, active);
+        }
+
+        shared_ptr<ValueTransformer> transform(const string& attr, AttributeTransformFunctor func, void* owner, bool active=true){
+            std::vector<string> attrs;
+            attrs.push_back(attr);
+            return transform(attrs, func, owner, active);
+        }
+
+        shared_ptr<ValueTransformer> transform(const std::vector<string> &attrs, AttributeTransformFunctor func, void* owner, bool active=true){
             auto transformerRef = make_shared<ValueTransformer>();
             transformerRef->setup(*this, attrs, func);
 
             // only save to our internal vector if active; otherwise let the shared_ptr expire
-            if(active)
-                valueTransformerRefs.push_back(transformerRef);
+            if(active){
+                valueTransformerRefs[owner].push_back(transformerRef);
+            }
 
             // give the transformer to the caller to they could use the start/stop functionality if they want
             return transformerRef;
         }
 
+        std::vector<shared_ptr<ValueTransformer>> stopTransform(void* owner){
+            std::vector<shared_ptr<ValueTransformer>> transformerRefs = valueTransformerRefs[owner];
+            valueTransformerRefs[owner].clear();
+
+            for(auto transformerRef : transformerRefs)
+                transformerRef->stop();
+
+            return transformerRefs;
+        }
+
     private:
-        //! internal list of active value transformers, see .transform method
-        std::vector<shared_ptr<ValueTransformer>> valueTransformerRefs;
+        //! internal list of active value transformers, grouped by owner see .transform methods
+        std::map<void*, std::vector<shared_ptr<ValueTransformer>>> valueTransformerRefs;
     };
 }

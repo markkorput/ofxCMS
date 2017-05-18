@@ -106,7 +106,7 @@ class ofApp: public ofxUnitTestsApp{
             // register transformer that counts two-out-of-three attributes
             auto transformerRef = model.transform(ofSplitString("attrA,attrC", ","), [&result](const string& value){
                 result += ofToInt(value);
-            });
+            }, this);
 
             // after registering the transformer the current values of the two attributes are already transformed
             test_eq(result, 101, "");
@@ -114,6 +114,10 @@ class ofApp: public ofxUnitTestsApp{
             // change some values
             model.set("attrB", "20"); // doesn't get tranformer
             model.set("attrC", "5"); // new value does get transformed
+            test_eq(result, 106, "");
+
+            model.stopTransform(this);
+            model.set("attrC", "4"); // new value does get transformed
             test_eq(result, 106, "");
         TEST_END
     }
