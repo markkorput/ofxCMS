@@ -13,6 +13,111 @@ typedef void* CidType;
 
 class ofApp: public ofxUnitTestsApp{
 
+    template<typename ModelType>
+    void testModel(){
+        TEST_START(each)
+            ModelType model;
+            std::vector<string> result;
+            model.set("name", "John");
+            model.set("age", "32");
+
+            test_eq(ofJoinString(result, ","), "", "");
+            model.each([&result](const string& attr, const string& val){
+                result.push_back(attr+"="+val);
+            });
+
+            test_eq(ofJoinString(result, ","), "age=32,name=John", "");
+        TEST_END
+
+        TEST_START(each lock; making modifications while iterating over attributes)
+            ModelType model;
+
+            model.set("name", "John");
+            model.set("age", "32");
+            test_eq(model.size(), 2, "");
+            test_eq(model.get("name_copy"), "", "");
+            test_eq(model.get("age_copy"), "", "");
+
+            std::vector<string> result;
+            test_eq(ofJoinString(result, ","), "", "");
+
+            model.each([&model, &result](const string& attr, const string& val){
+                // add copy attribute
+                model.set(attr+"_copy", val);
+                model.set(attr, val+"_updated");
+                // get number of attributes (the above new attribute should not be added yet)
+                result.push_back(attr+"="+model.get(attr)+"(size:"+ofToString(model.size())+")");
+            });
+
+            // during the iterations, the model didn't change
+            test_eq(ofJoinString(result, ","), "age=32(size:2),name=John(size:2)", "");
+            // immediately after the iterations finished, all changes were effected
+            test_eq(model.size(), 4, "");
+            test_eq(model.get("name"), "John_updated", "");
+            test_eq(model.get("age"), "32_updated", "");
+            test_eq(model.get("name_copy"), "John", "");
+            test_eq(model.get("age_copy"), "32", "");
+        TEST_END
+    }
+
+    template<typename ModelType>
+    void testExtendedModel(){
+        TEST_START(actively transform specific attribute)
+            ModelType model;
+            model.set("age", "10");
+
+            float result;
+
+            auto transformerRef = model.transform("age", [&result](const string& value){
+                result = ofToFloat(value) * 100.0f;
+            });
+
+            // .transform already processed the existing value
+            test_eq(result, 1000.0f, "");
+            // change value
+            model.set("age", "25");
+            // .transform registers change listener and automatically processes updated value
+            test_eq(result, 2500.0f, "");
+
+            // stop transformer
+            transformerRef->stop();
+            // change value
+            model.set("age", "1");
+            // didn't transform
+            test_eq(result, 2500.0f, "");
+
+            // start transformer again
+            transformerRef->start();
+            // change value
+            model.set("age", "2");
+            // DID transform
+            test_eq(result, 200.0f, "");
+        TEST_END
+
+        TEST_START(multiple attributes with same transformer)
+            // create a model with three "float" attributes
+            ModelType model;
+            model.set("attrA", "1");
+            model.set("attrB", "10");
+            model.set("attrC", "100");
+
+            int result=0;
+
+            // register transformer that counts two-out-of-three attributes
+            auto transformerRef = model.transform(ofSplitString("attrA,attrC", ","), [&result](const string& value){
+                result += ofToInt(value);
+            });
+
+            // after registering the transformer the current values of the two attributes are already transformed
+            test_eq(result, 101, "");
+
+            // change some values
+            model.set("attrB", "20"); // doesn't get tranformer
+            model.set("attrC", "5"); // new value does get transformed
+            test_eq(result, 106, "");
+        TEST_END
+    }
+
     template<typename InstanceType>
     void testObjectCollectionBase(){
         auto collectionRef = make_shared<ofxCMS::ObjectCollectionBase<InstanceType>>();
@@ -833,6 +938,10 @@ class ofApp: public ofxUnitTestsApp{
     }
 
     void run(){
+        testModel<ofxCMS::Model>();
+        testModel<ofxCMS::ExtendedModel>();
+        testExtendedModel<ofxCMS::ExtendedModel>();
+
         class NothingClass {};
         testObjectCollectionBase<NothingClass>();
         testObjectCollectionBase<ofxCMS::Model>();

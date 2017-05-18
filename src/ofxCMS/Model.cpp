@@ -15,6 +15,12 @@
 using namespace ofxCMS;
 
 Model* Model::set(const string &attr, const string &value, bool notify){
+    if(isLocked()){
+        ofLogVerbose() << "model locked; queueing .set operation for attribute: " << attr;
+        modQueueRefs.push_back(make_shared<Mod>(attr, value, notify));
+        return this;
+    }
+
     string old_value = _attributes[attr];
 
     _attributes[attr] = value;
@@ -56,10 +62,11 @@ bool Model::has(const string& attr) const {
 }
 
 void Model::each(AttrIterateFunc func){
-    ofLogWarning() << "TODO: locking mechanism ot protect attribute map from getting modified while iterating over it";
-    for(auto pair : _attributes){
-        func(pair.first, pair.second);
-    }
+    lock([this, &func](){
+        for(auto pair : this->_attributes){
+            func(pair.first, pair.second);
+        }
+    });
 }
 
 void Model::copy(shared_ptr<Model> otherRef, bool also_ids){
@@ -78,6 +85,24 @@ void Model::copy(Model& other, bool also_ids){
     });
 }
 
+void Model::lock(LockFunctor func){
+    lockCount++;
+    func();
+    lockCount--;
+
+    // still (recursively) locked? skip processing of opereations queue
+    if(isLocked())
+        return;
+
+    // after we're done iterating, we should process any items
+    // accumulated in the vector modificaton queue
+    for(auto modRef : modQueueRefs){
+        set(modRef->attr, modRef->value, modRef->notify);
+        // TODO; add support for removing attributes?
+    }
+
+    modQueueRefs.clear();
+}
 
 #ifdef OFXCMS_JSON
 // Convenience method with built-in support for MongoDB-style id format
