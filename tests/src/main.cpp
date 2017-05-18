@@ -94,6 +94,28 @@ class ofApp: public ofxUnitTestsApp{
             test_eq(result, 200.0f, "");
         TEST_END
 
+        TEST_START(multiple attributes with same transformer)
+            // create a model with three "float" attributes
+            ModelType model;
+            model.set("attrA", "1");
+            model.set("attrB", "10");
+            model.set("attrC", "100");
+
+            int result=0;
+
+            // register transformer that counts two-out-of-three attributes
+            auto transformerRef = model.transform(ofSplitString("attrA,attrC", ","), [&result](const string& value){
+                result += ofToInt(value);
+            });
+
+            // after registering the transformer the current values of the two attributes are already transformed
+            test_eq(result, 101, "");
+
+            // change some values
+            model.set("attrB", "20"); // doesn't get tranformer
+            model.set("attrC", "5"); // new value does get transformed
+            test_eq(result, 106, "");
+        TEST_END
     }
 
     template<typename InstanceType>
