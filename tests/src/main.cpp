@@ -13,6 +13,53 @@ typedef void* CidType;
 
 class ofApp: public ofxUnitTestsApp{
 
+    template<typename ModelType>
+    void testModel(){
+        TEST_START(each)
+            ModelType model;
+            std::vector<string> result;
+            model.set("name", "John");
+            model.set("age", "32");
+
+            test_eq(ofJoinString(result, ","), "", "");
+            model.each([&result](const string& attr, const string& val){
+                result.push_back(attr+"="+val);
+            });
+
+            test_eq(ofJoinString(result, ","), "age=32,name=John", "");
+        TEST_END
+
+        TEST_START(each lock; making modifications while iterating over attributes)
+            ModelType model;
+
+            model.set("name", "John");
+            model.set("age", "32");
+            test_eq(model.size(), 2, "");
+            test_eq(model.get("name_copy"), "", "");
+            test_eq(model.get("age_copy"), "", "");
+
+            std::vector<string> result;
+            test_eq(ofJoinString(result, ","), "", "");
+
+            model.each([&model, &result](const string& attr, const string& val){
+                // add copy attribute
+                model.set(attr+"_copy", val);
+                model.set(attr, val+"_updated");
+                // get number of attributes (the above new attribute should not be added yet)
+                result.push_back(attr+"="+model.get(attr)+"(size:"+ofToString(model.size())+")");
+            });
+
+            // during the iterations, the model didn't change
+            test_eq(ofJoinString(result, ","), "age=32(size:2),name=John(size:2)", "");
+            // immediately after the iterations finished, all changes were effected
+            test_eq(model.size(), 4, "");
+            test_eq(model.get("name"), "John_updated", "");
+            test_eq(model.get("age"), "32_updated", "");
+            test_eq(model.get("name_copy"), "John", "");
+            test_eq(model.get("age_copy"), "32", "");
+        TEST_END
+    }
+
     template<typename InstanceType>
     void testObjectCollectionBase(){
         auto collectionRef = make_shared<ofxCMS::ObjectCollectionBase<InstanceType>>();
@@ -833,6 +880,8 @@ class ofApp: public ofxUnitTestsApp{
     }
 
     void run(){
+        testModel<ofxCMS::Model>();
+
         class NothingClass {};
         testObjectCollectionBase<NothingClass>();
         testObjectCollectionBase<ofxCMS::Model>();
