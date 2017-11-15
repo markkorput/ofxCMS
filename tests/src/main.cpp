@@ -131,10 +131,10 @@ class ofApp: public ofxUnitTestsApp{
                 result += "name=" + mod.get("name");
             });
 
-            test_eq(result, "name=bob");
+            test_eq(result, "name=bob", "");
 
             model.set("name", "john");
-            test_eq(result, "name=bobname=john");
+            test_eq(result, "name=bobname=john", "");
         TEST_END
 
         TEST_START(passive -one-time- transform model)
@@ -147,11 +147,11 @@ class ofApp: public ofxUnitTestsApp{
                 result += "name=" + mod.get("name");
             }, false /* not active */);
 
-            test_eq(result, "name=bob");
+            test_eq(result, "name=bob", "");
 
             model.set("name", "john");
 
-            test_eq(result, "name=bob");
+            test_eq(result, "name=bob", "");
         TEST_END
     }
 
