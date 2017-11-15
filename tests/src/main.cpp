@@ -120,6 +120,39 @@ class ofApp: public ofxUnitTestsApp{
             model.set("attrC", "4"); // new value does get transformed
             test_eq(result, 106, "");
         TEST_END
+
+        TEST_START(active transform model)
+            ModelType model;
+            model.set("name", "bob");
+            string result = "";
+
+            // register transformer that counts two-out-of-three attributes
+            model.transform([&result](ofxCMS::Model & mod){
+                result += "name=" + mod.get("name");
+            });
+
+            test_eq(result, "name=bob");
+
+            model.set("name", "john");
+            test_eq(result, "name=bobname=john");
+        TEST_END
+
+        TEST_START(passive -one-time- transform model)
+            ModelType model;
+            model.set("name", "bob");
+            string result = "";
+
+            // register transformer that counts two-out-of-three attributes
+            model.transform([&result](ofxCMS::Model & mod){
+                result += "name=" + mod.get("name");
+            }, false /* not active */);
+
+            test_eq(result, "name=bob");
+
+            model.set("name", "john");
+
+            test_eq(result, "name=bob");
+        TEST_END
     }
 
     template<typename InstanceType>
@@ -941,23 +974,7 @@ class ofApp: public ofxUnitTestsApp{
         TEST_END
     }
 
-    void run(){
-        testModel<ofxCMS::Model>();
-        testModel<ofxCMS::ExtendedModel>();
-        testExtendedModel<ofxCMS::ExtendedModel>();
-
-        class NothingClass {};
-        testObjectCollectionBase<NothingClass>();
-        testObjectCollectionBase<ofxCMS::Model>();
-
-        testObjectCollection<NothingClass>();
-        testObjectCollection<ofxCMS::Model>();
-
-        testModelCollection<ofxCMS::ModelCollection<ofxCMS::Model>>();
-        testModelCollection<ofxCMS::Collection<ofxCMS::Model>>();
-
-        testCollectionAddons();
-
+    void testCollectionManager(){
         TEST_START(collection manager)
             // create singleton collections manager instance
             auto managerRef = ofxCMS::Manager<ofxCMS::Collection<ofxCMS::Model>>::singletonRef();
@@ -968,7 +985,9 @@ class ofApp: public ofxUnitTestsApp{
             // get a model from the products collection
             test_eq(managerRef->get("products")->at(0)->get("price"), "4.99", "");
         TEST_END
+    }
 
+    void testCustomModel(){
         TEST_START(CustomModel)
             class CustomModel : public ofxCMS::Model {
                 public:
@@ -987,6 +1006,26 @@ class ofApp: public ofxUnitTestsApp{
             modelRef->set("some", "change");
             test_eq(modelRef->get("lambda"), "called", "");
         TEST_END
+    }
+
+    void run(){
+        testModel<ofxCMS::Model>();
+        testModel<ofxCMS::ExtendedModel>();
+        testExtendedModel<ofxCMS::ExtendedModel>();
+
+        class NothingClass {};
+        testObjectCollectionBase<NothingClass>();
+        testObjectCollectionBase<ofxCMS::Model>();
+
+        testObjectCollection<NothingClass>();
+        testObjectCollection<ofxCMS::Model>();
+
+        testModelCollection<ofxCMS::ModelCollection<ofxCMS::Model>>();
+        testModelCollection<ofxCMS::Collection<ofxCMS::Model>>();
+
+        testCollectionAddons();
+        testCollectionManager();
+        testCustomModel();
     }
 };
 
